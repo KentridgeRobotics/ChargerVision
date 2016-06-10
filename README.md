@@ -4,7 +4,7 @@ Vision program written to run on a raspberry pi. The purpose of this program is 
 
 ## Requirements
 * Python 3.5
-* Installtion of OpenCV
+* Installation of OpenCV
 * Numpy
 * pynetworktables
 
