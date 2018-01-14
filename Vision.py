@@ -77,9 +77,6 @@ fps = 40
 # list of tracked points
 pts = deque(maxlen=args["buffer"])
 
-def calcDist(radius):
-	print radius
-
 # capture frames from the camera
 def frameUpdate(image):
 	# color trackbars
@@ -123,7 +120,6 @@ def frameUpdate(image):
 			center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 			# only proceed if the radius meets a minimum size
 			if radius > rad:
-				calcDist(radius)
 				# draw the circle and centroid on the frame,
 				# then update the list of tracked points
 				cv2.circle(image, (int(x), int(y)), int(radius), (0, 255, 255), 2)
