@@ -14,19 +14,19 @@ import cv2
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--camera", type=int, default=-1, help="camera source")
 ap.add_argument("-b", "--buffer", type=int, default=64, help="max buffer size")
+ap.add_argument("-s", "--sense", type=int, default=0, help="enable sensehat")
 args = vars(ap.parse_args())
 
 def nothing(x):
 	pass
 
-with open('CameraTestData', 'r') as f:
-	data = f.read()
-	pdata = data.split(",")
-f.close()
-
 # Control Window
 cv2.namedWindow('Control', )
 try:
+	with open('VisionData', 'r') as f:
+		data = f.read()
+		pdata = data.split(",")
+		f.close()
 	cv2.createTrackbar('Lower_Hue', 'Control', int(pdata[0]), 255, nothing)
 	cv2.createTrackbar('Upper_Hue', 'Control', int(pdata[1]), 255, nothing)
 
@@ -39,7 +39,7 @@ try:
 	cv2.createTrackbar('Rad', 'Control', int(pdata[6]), 100, nothing)
 
 	cv2.createTrackbar('Brightness', 'Control', int(pdata[7]), 100, nothing)
-except (NameError, IndexError, ValueError) as e:
+except (IOError, NameError, IndexError, ValueError) as e:
 	cv2.createTrackbar('Lower_Hue', 'Control', 0, 255, nothing)
 	cv2.createTrackbar('Upper_Hue', 'Control', 255, 255, nothing)
 
@@ -52,22 +52,23 @@ except (NameError, IndexError, ValueError) as e:
 	cv2.createTrackbar('Rad', 'Control', 10, 100, nothing)
 
 	cv2.createTrackbar('Brightness', 'Control', 50, 100, nothing)
-# initialize SenseHat
-sense = SenseHat()
 
-# enable SenseHat LEDs
-sense.clear(255, 255, 255)
-sense.set_rotation(90)
-sense.set_pixel(2, 1, [0, 0, 0])
-sense.set_pixel(5, 1, [0, 0, 0])
-sense.set_pixel(3, 3, [0, 255, 0])
-sense.set_pixel(4, 3, [0, 255, 0])
-sense.set_pixel(1, 5, [0, 255, 0])
-sense.set_pixel(2, 6, [0, 255, 0])
-sense.set_pixel(3, 6, [0, 255, 0])
-sense.set_pixel(4, 6, [0, 255, 0])
-sense.set_pixel(5, 6, [0, 255, 0])
-sense.set_pixel(6, 5, [0, 255, 0])
+# initialize SenseHat
+if args["sense"] == 1:
+	sense = SenseHat()
+	# enable SenseHat LEDs
+	sense.clear(255, 255, 255)
+	sense.set_rotation(90)
+	sense.set_pixel(2, 1, [0, 0, 0])
+	sense.set_pixel(5, 1, [0, 0, 0])
+	sense.set_pixel(3, 3, [0, 255, 0])
+	sense.set_pixel(4, 3, [0, 255, 0])
+	sense.set_pixel(1, 5, [0, 255, 0])
+	sense.set_pixel(2, 6, [0, 255, 0])
+	sense.set_pixel(3, 6, [0, 255, 0])
+	sense.set_pixel(4, 6, [0, 255, 0])
+	sense.set_pixel(5, 6, [0, 255, 0])
+	sense.set_pixel(6, 5, [0, 255, 0])
 
 # resolution
 xres = 160
@@ -157,8 +158,9 @@ def stopRun():
 
 	bright = cv2.getTrackbarPos('Brightness', 'Control')
 
-	sense.clear(0, 0, 0)
-	with open('CameraTestData', 'w') as f:
+	if args["sense"] == 1:
+		sense.clear(0, 0, 0)
+	with open('VisionData', 'w') as f:
 		f.truncate();
 		f.write(str(lower_hue) + "," + str(upper_hue) + "," + str(lower_sat) + "," + str(upper_sat) + "," + str(lower_vib) + "," + str(upper_vib) + "," + str(rad) + "," + str(bright))
 
