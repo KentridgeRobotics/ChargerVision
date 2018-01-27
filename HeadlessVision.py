@@ -11,14 +11,22 @@ import imutils
 import ast
 import cv2
 import sys
+import curses
+from curses import wrapper
+
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-c", "--camera", type=int, default=-1, help="camera source")
+ap.add_argument("-c", "--camera", type=int, default=0, help="camera source")
 ap.add_argument("-s", "--sense", type=int, default=0, help="enable sensehat")
-ap.add_argument("-t", "--team", type=str, default="3786", help="FRC team number")
+ap.add_argument("-i", "--serverip", type=str, default="10.37.86.2", help="NetworkTables IP")
 ap.add_argument("-a", "--table", type=str, default="SmartDashboard", help="NetworkTables Table")
 args = vars(ap.parse_args())
+
+def printst(win, str):
+	if not pauseOut:
+		win.clear()
+		win.addstr(str + "\n")
 
 def nothing(x):
 	pass
@@ -55,9 +63,8 @@ except (IOError, NameError, IndexError, ValueError) as e:
 	bright = 50
 
 # initialize NetworkTables
-teamSplit = [args["team"][i:i+2] for i in range(0, len(args["team"]), 2)]
-print("Connecting to network tables at: 10." + teamSplit[0] + "." + teamSplit[1] + ".2")
-NetworkTables.initialize(server='10.' + teamSplit[0] + '.' + teamSplit[1] + '.2')
+print("Connecting to network tables at: " + args["serverip"])
+NetworkTables.initialize(server=args["serverip"])
 print("Selecting NetworkTable: " + args["table"])
 nwt = NetworkTables.getTable(args["table"])
 
@@ -84,7 +91,7 @@ yres = 128
 fps = 40
 
 # capture frames from the camera
-def frameUpdate(image):
+def frameUpdate(image, window):
 
 	#for testing
 	lower_limit = np.array([lower_hue, lower_sat, lower_vib])
@@ -118,7 +125,7 @@ def frameUpdate(image):
 			# only proceed if the radius meets a minimum size
 			if radius > rad:
 				# add data to NetworkTables
-				print(str(center) + "," + str(radius))
+				printst(window, str(center) + "," + str(radius))
 				nwt.putNumber('cubeX', cx)
 				nwt.putNumber('cubeY', cy)
 				nwt.putNumber('cubeR', radius)
@@ -130,43 +137,61 @@ def stopRun():
 		f.truncate();
 		f.write(str(lower_hue) + "," + str(upper_hue) + "," + str(lower_sat) + "," + str(upper_sat) + "," + str(lower_vib) + "," + str(upper_vib) + "," + str(rad) + "," + str(bright))
 
-# initialize the camera and grab a reference to the raw camera capture
-if args["camera"] == -1:
-	camera = PiCamera()
-	camera.resolution = (xres, yres)
-	camera.framerate = fps
-	rawCapture = PiRGBArray(camera, size=(xres, yres))
- 
-	# allow the camera to warmup
-	time.sleep(0.1)
-	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-		# grab the raw NumPy array representing the image, then initialize the timestamp
-		# and occupied/unoccupied text
-		image = frame.array
-
-		(hc, wc) = image.shape[:2]
-		imcenter = (wc/2, hc/2)
-		RM = cv2.getRotationMatrix2D(imcenter, 180, 1.0)
-		image = cv2.warpAffine(image, RM, (wc,hc))
-
-		frameUpdate(image)
-		# clear the stream in preparation for the next frame
-		rawCapture.truncate(0)
-		# if an input was given, break from the loop
-		if sys.stdin.readline() != "":
-			stopRun()
-			break
-else:
-	cam = cv2.VideoCapture(args["camera"])
-	while(True):
-		_, image = cam.read()
-
-		cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)
-		image = imutils.resize(image, width=xres)
-
-		frameUpdate(image)
-		# if an input was given, break from the loop
-		if sys.stdin.readline() != "":
-			stopRun()
-			cam.release()
-			break
+def main(window):
+	window.nodelay(True)
+	global pauseOut
+	pauseOut = False
+	# initialize the camera and grab a reference to the raw camera capture
+	if args["camera"] == -1:
+		camera = PiCamera()
+		camera.resolution = (xres, yres)
+		rawCapture = PiRGBArray(camera, size=(xres, yres))
+	 
+		# allow the camera to warmup
+		time.sleep(0.1)
+		while(True):
+			camera.capture(rawCapture, format="bgr", use_video_port=True)
+			# grab the raw NumPy array representing the image, then initialize the timestamp
+			# and occupied/unoccupied text
+			image = rawCapture.array
+	
+			(hc, wc) = image.shape[:2]
+			imcenter = (wc/2, hc/2)
+			RM = cv2.getRotationMatrix2D(imcenter, 180, 1.0)
+			image = cv2.warpAffine(image, RM, (wc,hc))
+	
+			frameUpdate(image, window)
+			# clear the stream in preparation for the next frame
+			rawCapture.seek(0)
+			rawCapture.truncate(0)
+			# if an input was given, break from the loop
+			key = window.getch()
+			if key == ord('q'):
+				stopRun()
+				break
+			elif key == ord(' '):
+				if pauseOut:
+					pauseOut = False
+				else:
+					pauseOut = True
+	else:
+		cam = cv2.VideoCapture(args["camera"])
+		while(True):
+			_, image = cam.read()
+	
+			cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)
+			image = imutils.resize(image, width=xres)
+	
+			frameUpdate(image, window)
+			# if an input was given, break from the loop
+			key = window.getch()
+			if key == ord('q'):
+				stopRun()
+				cam.release()
+				break
+			elif key == ord(' '):
+				if pauseOut:
+					pauseOut = False
+				else:
+					pauseOut = True
+wrapper(main)

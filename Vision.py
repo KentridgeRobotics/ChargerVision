@@ -213,7 +213,7 @@ if args["camera"] == -1:
 			stopRun()
 			break
 		# if an input was given, break from the loop
-		if sys.stdin.readline() != "":
+		elif sys.stdin.readline():
 			stopRun()
 			break
 else:
@@ -235,7 +235,7 @@ else:
 			cam.release()
 			break
 		# if an input was given, break from the loop
-		if sys.stdin.readline() != "":
+		elif sys.stdin.readline():
 			stopRun()
 			cam.release()
 			break
