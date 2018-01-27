@@ -3,18 +3,22 @@ from collections import deque
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 from sense_hat import SenseHat
+from networktables import NetworkTables
 import numpy as np
 import time
 import argparse
 import imutils
 import ast
 import cv2
+import sys
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--camera", type=int, default=-1, help="camera source")
 ap.add_argument("-b", "--buffer", type=int, default=64, help="max buffer size")
 ap.add_argument("-s", "--sense", type=int, default=0, help="enable sensehat")
+ap.add_argument("-t", "--team", type=str, default="3786", help="FRC team number")
+ap.add_argument("-a", "--table", type=str, default="SmartDashboard", help="NetworkTables Table")
 args = vars(ap.parse_args())
 
 def nothing(x):
@@ -52,6 +56,13 @@ except (IOError, NameError, IndexError, ValueError) as e:
 	cv2.createTrackbar('Rad', 'Control', 10, 100, nothing)
 
 	cv2.createTrackbar('Brightness', 'Control', 50, 100, nothing)
+
+# initialize NetworkTables
+teamSplit = [args["team"][i:i+2] for i in range(0, len(args["team"]), 2)]
+print("Connecting to network tables at: 10." + teamSplit[0] + "." + teamSplit[1] + ".2")
+NetworkTables.initialize(server='10.' + teamSplit[0] + '.' + teamSplit[1] + '.2')
+print("Selecting NetworkTable: " + args["table"])
+nwt = NetworkTables.getTable(args["table"])
 
 # initialize SenseHat
 if args["sense"] == 1:
@@ -118,9 +129,15 @@ def frameUpdate(image):
 		((x, y), radius) = cv2.minEnclosingCircle(c)
 		M = cv2.moments(c)
 		if M["m00"] > 0:
-			center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+			cx = int(M["m10"] / M["m00"])
+			cy = int(M["m01"] / M["m00"])
+			center = (cx, cy)
 			# only proceed if the radius meets a minimum size
 			if radius > rad:
+				# add data to NetworkTables
+				nwt.putNumber('cubeX', cx)
+				nwt.putNumber('cubeY', cy)
+				nwt.putNumber('cubeR', radius)
 				# draw the circle and centroid on the frame,
 				# then update the list of tracked points
 				cv2.circle(image, (int(x), int(y)), int(radius), (0, 255, 255), 2)
@@ -141,8 +158,12 @@ def frameUpdate(image):
 		cv2.line(image, pts[i - 1], pts[i], (0, 0, 255), thickness)
 
 	# show the frame
-	cv2.imshow("Mask", mask)
+	imagem = cv2.bitwise_and(image,image,mask = mask)
+	hsvm = cv2.bitwise_and(hsv,hsv,mask = mask)
 	cv2.imshow("Track", image)
+	cv2.imshow("Mask", imagem)
+	cv2.imshow("HSV", hsv)
+	cv2.imshow("HSV Mask", hsvm)
 
 def stopRun():
 	lower_hue = cv2.getTrackbarPos('Lower_Hue', 'Control')
@@ -191,9 +212,14 @@ if args["camera"] == -1:
 		if key == ord("q"):
 			stopRun()
 			break
+		# if an input was given, break from the loop
+		if sys.stdin.readline() != "":
+			stopRun()
+			break
 else:
 	cam = cv2.VideoCapture(args["camera"])
 	while(True):
+		print("test")
 		_, image = cam.read()
 
 		bright = cv2.getTrackbarPos('Brightness', 'Control')
@@ -205,6 +231,11 @@ else:
 		# if the `q` key was pressed, break from the loop
 		key = cv2.waitKey(1) & 0xFF
 		if key == ord("q"):
+			stopRun()
+			cam.release()
+			break
+		# if an input was given, break from the loop
+		if sys.stdin.readline() != "":
 			stopRun()
 			cam.release()
 			break

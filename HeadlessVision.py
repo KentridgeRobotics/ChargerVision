@@ -3,17 +3,21 @@ from collections import deque
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 from sense_hat import SenseHat
+from networktables import NetworkTables
 import numpy as np
 import time
 import argparse
 import imutils
 import ast
 import cv2
+import sys
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--camera", type=int, default=-1, help="camera source")
 ap.add_argument("-s", "--sense", type=int, default=0, help="enable sensehat")
+ap.add_argument("-t", "--team", type=str, default="3786", help="FRC team number")
+ap.add_argument("-a", "--table", type=str, default="SmartDashboard", help="NetworkTables Table")
 args = vars(ap.parse_args())
 
 def nothing(x):
@@ -49,6 +53,13 @@ except (IOError, NameError, IndexError, ValueError) as e:
 	rad = 10
 
 	bright = 50
+
+# initialize NetworkTables
+teamSplit = [args["team"][i:i+2] for i in range(0, len(args["team"]), 2)]
+print("Connecting to network tables at: 10." + teamSplit[0] + "." + teamSplit[1] + ".2")
+NetworkTables.initialize(server='10.' + teamSplit[0] + '.' + teamSplit[1] + '.2')
+print("Selecting NetworkTable: " + args["table"])
+nwt = NetworkTables.getTable(args["table"])
 
 # initialize SenseHat
 if args["sense"] == 1:
@@ -101,13 +112,16 @@ def frameUpdate(image):
 		((x, y), radius) = cv2.minEnclosingCircle(c)
 		M = cv2.moments(c)
 		if M["m00"] > 0:
-			center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+			cx = int(M["m10"] / M["m00"])
+			cy = int(M["m01"] / M["m00"])
+			center = (cx, cy)
 			# only proceed if the radius meets a minimum size
 			if radius > rad:
-				# draw the circle and centroid on the frame,
-				# then update the list of tracked points
-				cv2.circle(image, (int(x), int(y)), int(radius), (0, 255, 255), 2)
-				cv2.circle(image, center, 5, (0, 0, 255), -1)
+				# add data to NetworkTables
+				print(str(center) + "," + str(radius))
+				nwt.putNumber('cubeX', cx)
+				nwt.putNumber('cubeY', cy)
+				nwt.putNumber('cubeR', radius)
 
 def stopRun():
 	if args["sense"] == 1:
@@ -138,9 +152,8 @@ if args["camera"] == -1:
 		frameUpdate(image)
 		# clear the stream in preparation for the next frame
 		rawCapture.truncate(0)
-		# if the `q` key was pressed, break from the loop
-		key = cv2.waitKey(1) & 0xFF
-		if key == ord("q"):
+		# if an input was given, break from the loop
+		if sys.stdin.readline() != "":
 			stopRun()
 			break
 else:
@@ -152,9 +165,8 @@ else:
 		image = imutils.resize(image, width=xres)
 
 		frameUpdate(image)
-		# if the `q` key was pressed, break from the loop
-		key = cv2.waitKey(1) & 0xFF
-		if key == ord("q"):
+		# if an input was given, break from the loop
+		if sys.stdin.readline() != "":
 			stopRun()
 			cam.release()
 			break
