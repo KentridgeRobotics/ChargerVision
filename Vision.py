@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # import the necessary packages
 from collections import deque
 from picamera.array import PiRGBArray

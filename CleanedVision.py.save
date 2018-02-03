@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # import the necessary packages
 from collections import deque
-from picamera.array import PiRGBArray
-from picamera import PiCamera
-from sense_hat import SenseHat
 from networktables import NetworkTables
 import numpy as np
 import time
@@ -12,22 +9,13 @@ import imutils
 import ast
 import cv2
 import sys
-import curses
-from curses import wrapper
-
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--camera", type=int, default=0, help="camera source")
-ap.add_argument("-s", "--sense", type=int, default=0, help="enable sensehat")
 ap.add_argument("-i", "--serverip", type=str, default="10.37.86.2", help="NetworkTables IP")
 ap.add_argument("-a", "--table", type=str, default="SmartDashboard", help="NetworkTables Table")
 args = vars(ap.parse_args())
-
-def printst(win, str):
-	if not pauseOut:
-		win.clear()
-		win.addstr(str + "\n")
 
 def nothing(x):
 	pass
@@ -64,33 +52,10 @@ except (IOError, NameError, IndexError, ValueError) as e:
 	bright = 50
 
 # initialize NetworkTables
-print("Connecting to network tables at: " + args["serverip"])
 NetworkTables.initialize(server=args["serverip"])
-print("Selecting NetworkTable: " + args["table"])
 nwt = NetworkTables.getTable(args["table"])
 
-# initialize SenseHat
-if args["sense"] == 1:
-	sense = SenseHat()
-	# enable SenseHat LEDs
-	sense.clear(255, 255, 255)
-	sense.set_rotation(90)
-	sense.set_pixel(2, 1, [0, 0, 0])
-	sense.set_pixel(5, 1, [0, 0, 0])
-	sense.set_pixel(3, 3, [0, 255, 0])
-	sense.set_pixel(4, 3, [0, 255, 0])
-	sense.set_pixel(1, 5, [0, 255, 0])
-	sense.set_pixel(2, 6, [0, 255, 0])
-	sense.set_pixel(3, 6, [0, 255, 0])
-	sense.set_pixel(4, 6, [0, 255, 0])
-	sense.set_pixel(5, 6, [0, 255, 0])
-	sense.set_pixel(6, 5, [0, 255, 0])
-
-# resolution
-xres = 160
-yres = 128
-fps = 40
-
+# resolu
 # capture frames from the camera
 def frameUpdate(image, window):
 
