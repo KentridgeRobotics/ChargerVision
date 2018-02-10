@@ -20,6 +20,10 @@ args = vars(ap.parse_args())
 
 def nothing(x):
 	pass
+
+# initialize NetworkTables
+NetworkTables.initialize(server=args["serverip"])
+nwt = NetworkTables.getTable(args["table"])
   
 try:
 	with open('VisionData', 'r') as f:
@@ -52,41 +56,40 @@ except (IOError, NameError, IndexError, ValueError) as e:
 
 	bright = 50
 
+# push settings to network tables
+nwt.putNumber('lower_hue', lower_hue)
+nwt.putNumber('upper_hue', upper_hue)
+
+nwt.putNumber('lower_sat', lower_sat)
+nwt.putNumber('upper_sat', upper_sat)
+
+nwt.putNumber('lower_vib', lower_vib)
+nwt.putNumber('upper_vib', upper_vib)
+
+nwt.putNumber('radius', rad)
+
+nwt.putNumber('brightness', bright)
+
 # reslution
 xres = 160
 yres = 128
 
-# initialize NetworkTables
-NetworkTables.initialize(server=args["serverip"])
-nwt = NetworkTables.getTable(args["table"])
-
-
 def findCubeContours(hsv):
-        pass
-    lower_limit = np.array([lower_hue, lower_sat, lower_vib])
-    upper_limit = np.array([upper_hue, upper_sat, upper_vib])
-
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-
-    mask = cv2.inRange(hsv, lower_limit, upper_limit)
-    mask = cv2.erode(mase, None, iterations=2)
-    mask = cv2.dilate(mask, None, iterations=2)
-    cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
-
-    return cnts
-
-def findTargetContours(hsv):
-
-
-# capture frames from the camera
-def frameUpdate(image):
-
-	#for testing
+	# get settings from network tables
+	lower_hue = nwt.getNumber('lower_hue')
+	upper_hue = nwt.getNumber('upper_hue')
+	
+	lower_sat = nwt.getNumber('lower_sat')
+	upper_sat = nwt.getNumber('upper_sat')
+	
+	lower_vib = nwt.getNumber('lower_vib')
+	upper_vib = nwt.getNumber('upper_vib')
+	
+	rad = nwt.getNumber('radius')
+	
+	# for testing
 	lower_limit = np.array([lower_hue, lower_sat, lower_vib])
 	upper_limit = np.array([upper_hue, upper_sat, upper_vib])
-
-	hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
 	# construct a mask for the color "green", then perform
 	# a series of dilations and erosions to remove any small
@@ -117,9 +120,16 @@ def frameUpdate(image):
 				nwt.putNumber('cubeX', cx)
 				nwt.putNumber('cubeY', cy)
 				nwt.putNumber('cubeR', radius)
-				print(NetworkTables.getTable('/cubeX/'))
-				print(NetworkTables.getTable('/cubeY/'))
-				print(NetworkTables.getTable('/cubeR/'))
+    return cnts
+
+def findTargetContours(hsv):
+
+
+# capture frames from the camera
+def frameUpdate(image):
+	hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+	findCubeContours(hsv)
+	findTargetContours(hsv)
 
 def stopRun():
 	with open('VisionData', 'w') as f:
@@ -130,6 +140,7 @@ def stopRun():
 # writes color data to the network table
 	cam = cv2.VideoCapture(args["camera"])
 	while(True):
+		bright = nwt.getNumber('brightness')
 		image = cam.read()
 		image = imutils.resize(image, width=xres)
 		cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)
