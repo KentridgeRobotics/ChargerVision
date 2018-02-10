@@ -7,8 +7,10 @@ import Adafruit_TCS34725
 
 #Instance of Adafruit
 import smbus
-tcs = Adafruit_TCS34725.TCS34725()
+tcs = Adafruit_TCS34725.TCS34725(integration_time = Adafruit_TCS34725.TCS34725_INTEGRATIONTIME_50MS)
 
+#Convert RGB to HLS
+import colorsys
 
 def write_color_data(network_table):
 
@@ -18,15 +20,17 @@ def write_color_data(network_table):
     #Read the RGBC color data
     r, g, b, c = tcs.get_raw_data()
 
-    network_table.putNumber("red", r)
-    network_table.putNumber("green",g)
-    newtork_table.putNumber("blue",b)
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+
+    network_table.putNumber("Hue", h)
+    network_table.putNumber("Saturation", s)
+    newtork_table.putNumber("Lightness", l)
     
     #Calculate luminosity
-    lux = Adafruit_TCS34725.calculate_lux(r,g,b)
+    lux = Adafruit_TCS34725.calculate_lux(r , g, b)
     
     #Write luminosity to network table
-    network_table.putNumber("lum",lux)
+    network_table.putNumber("Luminosity", lux)
     return 
 
 
