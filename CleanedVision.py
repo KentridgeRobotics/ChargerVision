@@ -9,6 +9,7 @@ import imutils
 import ast
 import cv2
 import sys
+import ColorSensor
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -97,16 +98,22 @@ def frameUpdate(image):
 				nwt.putNumber('cubeX', cx)
 				nwt.putNumber('cubeY', cy)
 				nwt.putNumber('cubeR', radius)
-
+				print(NetworkTables.getTable('/cubeX/'))
+				print(NetworkTables.getTable('/cubeY/'))
+				print(NetworkTables.getTable('/cubeR/'))
 def stopRun():
 	with open('VisionData', 'w') as f:
 		f.truncate();
 		f.write(str(lower_hue) + "," + str(upper_hue) + "," + str(lower_sat) + "," + str(upper_sat) + "," + str(lower_vib) + "," + str(upper_vib) + "," + str(rad) + "," + str(bright))
 
 # initialize the camera and grab a reference to the raw camera capture
-cam = cv2.VideoCapture(args["camera"])
-while(True):
-	_, image = cam.read()
-	cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)
-	image = imutils.resize(image, width=xres)
-	frameUpdate(image)
+# writes color data to the network table
+	cam = cv2.VideoCapture(args["camera"])
+	while(True):
+		image = cam.read()
+		image = imutils.resize(image, width=xres)
+		cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)
+		frameUpdate(image)
+                write_color_data(nwt)
+print('sup')
+
