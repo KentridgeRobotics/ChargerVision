@@ -60,6 +60,25 @@ yres = 128
 NetworkTables.initialize(server=args["serverip"])
 nwt = NetworkTables.getTable(args["table"])
 
+
+def findCubeContours(hsv):
+        pass
+    lower_limit = np.array([lower_hue, lower_sat, lower_vib])
+    upper_limit = np.array([upper_hue, upper_sat, upper_vib])
+
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+
+    mask = cv2.inRange(hsv, lower_limit, upper_limit)
+    mask = cv2.erode(mase, None, iterations=2)
+    mask = cv2.dilate(mask, None, iterations=2)
+    cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
+
+    return cnts
+
+def findTargetContours(hsv):
+
+
 # capture frames from the camera
 def frameUpdate(image):
 
@@ -101,6 +120,7 @@ def frameUpdate(image):
 				print(NetworkTables.getTable('/cubeX/'))
 				print(NetworkTables.getTable('/cubeY/'))
 				print(NetworkTables.getTable('/cubeR/'))
+
 def stopRun():
 	with open('VisionData', 'w') as f:
 		f.truncate();
