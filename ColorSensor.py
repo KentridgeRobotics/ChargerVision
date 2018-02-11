@@ -6,7 +6,6 @@ import time
 import Adafruit_TCS34725 
 
 #Instance of Adafruit
-import smbus
 tcs = Adafruit_TCS34725.TCS34725(integration_time = Adafruit_TCS34725.TCS34725_INTEGRATIONTIME_50MS)
 
 #Convert RGB to HLS

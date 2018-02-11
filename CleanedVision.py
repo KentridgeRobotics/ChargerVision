@@ -9,7 +9,7 @@ import imutils
 import ast
 import cv2
 import sys
-import ColorSensor
+# import ColorSensor
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -24,7 +24,7 @@ def nothing(x):
 # initialize NetworkTables
 NetworkTables.initialize(server=args["serverip"])
 nwt = NetworkTables.getTable(args["table"])
-  
+
 try:
 	with open('VisionData', 'r') as f:
 		data = f.read()
@@ -78,15 +78,15 @@ def findCubeContours(hsv):
 	# get settings from network tables
 	lower_hue = nwt.getNumber('lower_hue')
 	upper_hue = nwt.getNumber('upper_hue')
-	
+
 	lower_sat = nwt.getNumber('lower_sat')
 	upper_sat = nwt.getNumber('upper_sat')
-	
+
 	lower_vib = nwt.getNumber('lower_vib')
 	upper_vib = nwt.getNumber('upper_vib')
-	
+
 	rad = nwt.getNumber('radius')
-	
+
 	# for testing
 	lower_limit = np.array([lower_hue, lower_sat, lower_vib])
 	upper_limit = np.array([upper_hue, upper_sat, upper_vib])
@@ -120,10 +120,10 @@ def findCubeContours(hsv):
 				nwt.putNumber('cubeX', cx)
 				nwt.putNumber('cubeY', cy)
 				nwt.putNumber('cubeR', radius)
-    return cnts
+	return cnts
 
 def findTargetContours(hsv):
-
+	pass
 
 # capture frames from the camera
 def frameUpdate(image):
@@ -142,9 +142,7 @@ def stopRun():
 	while(True):
 		bright = nwt.getNumber('brightness')
 		image = cam.read()
-		image = imutils.resize(image, width=xres)
-		cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)
-		frameUpdate(image)
-                write_color_data(nwt)
-print('sup')
-
+		if image != None:
+			image = imutils.resize(image, width=xres)
+			cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)
+			frameUpdate(image)
