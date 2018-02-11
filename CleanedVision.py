@@ -120,6 +120,7 @@ def findCubeContours(hsv):
 				nwt.putNumber('cubeX', cx)
 				nwt.putNumber('cubeY', cy)
 				nwt.putNumber('cubeR', radius)
+				print(str(cy))
 	return cnts
 
 def findTargetContours(hsv):
