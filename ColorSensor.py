@@ -11,6 +11,7 @@ import pprint
 
 #Instance of Adafruit
 tcs = Adafruit_TCS34725.TCS34725(integration_time=Adafruit_TCS34725.TCS34725_INTEGRATIONTIME_50MS)
+tcs.set_interrupt(False)
 
 #Convert RGB to HLS
 
@@ -19,13 +20,22 @@ pprinter = pprint.PrettyPrinter()
 def write_color_data(network_table):
 
     #Disable Interups
-    tcs.set_interrupt(False)
 
     #Read the RGBC color data
     r, g, b, c = tcs.get_raw_data()
 
-    h, l, s = colorsys.rgb_to_hls(r, g, b)
+    red = r / 20480.0
+    green = g / 20480.0
+    blue = b / 20480.0
 
+
+    h, l, s = colorsys.rgb_to_hls(red, green, blue)
+
+    print ("red: {}".format(red))
+    print ("green: {}".format(green))
+    print ("blue: {}".format(blue))
+
+    
     pprinter.pprint([h, l, s])
     if (network_table is not None):
         network_table.putNumber("Hue", h)
