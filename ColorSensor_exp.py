@@ -45,9 +45,9 @@ def write_color_data(network_table):
     #Read the RGBC color data
     r, g, b, c = tcs.get_raw_data()
     
-    red = r / 20480.0
-    green = g / 20480.0
-    blue = b / 20480.0
+    red = r
+    green = g
+    blue = b
 
     h, l, s = colorsys.rgb_to_hls(red, green, blue)
     
@@ -113,13 +113,5 @@ def remove_outlier(list):
 
     return
 
-
-# Get color of carpet for a few samples
-while True:
-    # is the color we see very different from what we saw initially?
+def run_color_sensor():
     write_color_data(None)
-
-    
-
-
-

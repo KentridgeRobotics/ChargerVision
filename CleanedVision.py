@@ -13,7 +13,7 @@ import pprint
 
 import LED
 
-# import ColorSensor
+import ColorSensor_exp as ColorSensor
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
@@ -127,7 +127,6 @@ def findCubeContours(hsv):
 				nwt.putNumber('cubeX', cx)
 				nwt.putNumber('cubeY', cy)
 				nwt.putNumber('cubeR', radius)
-				print(str(cy))
 	return cnts
 
 def findTargetContours(hsv):
@@ -147,9 +146,8 @@ def stopRun():
 # initialize the camera and grab a reference to the raw camera capture
 # writes color data to the network table
 cam = cv2.VideoCapture(args["camera"])
-pprinter = pprint.PrettyPrinter(indent=4)
-pprinter.pprint(cam)
-while(True):
+while True:
+    ColorSensor.run_color_sensor()
     color = nwt.getNumberArray('LED', (0, 0, 0))
     LED.setColor(color)
     bright = nwt.getNumber('brightness', 100.0)
