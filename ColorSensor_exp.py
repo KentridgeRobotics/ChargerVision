@@ -9,10 +9,15 @@ import Adafruit_TCS34725
 import colorsys
 import pprint
 import time
+import sys
+import numpy
+
 
 #Instance of Adafruit
 tcs = Adafruit_TCS34725.TCS34725(integration_time=Adafruit_TCS34725.TCS34725_INTEGRATIONTIME_50MS)
 tcs.set_interrupt(False)
+
+
 
 #Convert RGB to HLS
 
@@ -27,15 +32,35 @@ carpet_l_values = []
 carpet_s_values = []
 
 
+h_deviation = 0.0
+l_deviation = 0.0
+s_deviation = 0.0
+
+recent_samples = []
+h_sample_counter = 0
+l_sample_counter = 0
+s_sample_counter = 0
 
 
-h_rounding_error_list = []
-l_rounding_error_list = []
-s_rounding_error_list = []
+def get_sample():
+    # Read the RGBC color data
+    r, g, b, c = tcs.get_raw_data()
+    
+    red = r / 20480.0
+    green = g / 20480.0
+    blue = b / 20480.0
 
-h_rounding_error = 0.0
-l_rounding_error = 0.0
-s_rounding_error = 0.0
+    h, l, s = colorsys.rgb_to_hls(red, green, blue)
+
+    return {
+        h,
+        l,
+        s
+    }
+
+def write_sample(sample):
+    pprinter.pprint(sample)
+
 
 
 def write_color_data(network_table):
@@ -59,6 +84,12 @@ def write_color_data(network_table):
     if(callibrating):
         callibrate_values(h, l, s)
     
+    #Determine Change
+    if(callibrating != True) and (h_deviation != 0.0):
+        check_values(h, s, l, network_table)
+
+
+
     pprinter.pprint([h, l, s])
     if (network_table is not None):
         network_table.putNumber("Hue", h)
@@ -75,31 +106,32 @@ def write_color_data(network_table):
     
     
 def callibrate_values(h, l, s):
+    print ("callibrating")
     if(len(carpet_s_values) < 5):
         carpet_h_values.append(h)
         carpet_l_values.append(l)
         carpet_s_values.append(s)
         
-    elif(len(h_rounding_error_list) < 5):
+    else:
+        
         carpet_values[0] = sum(carpet_h_values) / len(carpet_h_values)
         carpet_values[1] = sum(carpet_l_values) / len(carpet_l_values)
         carpet_values[2] = sum(carpet_s_values) / len(carpet_s_values)
-        temp_h_round = abs(h - carpet_values[0])
-        temp_l_round = abs(l - carpet_values[1])
-        temp_s_round = abs(s - carpet_values[2])
-        h_rounding_error_list.append(temp_h_round)
-        l_rounding_error_list.append(temp_l_round)
-        s_rounding_error_list.append(temp_s_round)
-    else:
-        sorted(h_rounding_error_list)
-        h_rounding_error = h_rounding_error_list[len(h_rounding_error_list) - 1]
-        l_rounding_error = l_rounding_error_list[len(l_rounding_error_list) - 1]
-        s_rounding_error = s_rounding_error_list[len(s_rounding_error_list) - 1]
-        
-         
-        print ("H Value: {}      Rounding Error: {}".format(carpet_values[0], h_rounding_error))
-        print ("L Value: {}      Rounding Error: {}".format(carpet_values[1], l_rounding_error))
-        print ("S Value: {}      Rounding Error: {}".format(carpet_values[2], s_rounding_error))
+                 
+        global h_deviation
+        global l_deviation
+        global s_deviation
+        h_deviation = numpy.std(carpet_h_values)
+        l_deviation = numpy.std(carpet_l_values)
+        s_deviation = numpy.std(carpet_s_values) 
+
+
+
+ 
+        print ("H Value: {}      Deviation: {}".format(carpet_values[0], h_deviation))
+        print ("L Value: {}      Deviation: {}".format(carpet_values[1], l_deviation))
+        print ("S Value: {}      Deviation: {}".format(carpet_values[2], s_deviation))
+        global callibrating
         callibrating = False
 
     return
@@ -113,12 +145,62 @@ def remove_outlier(list):
 
     return
 
+def check_values(h, s, l, network_table):
+    global recent_samples
+    if(len(recent_samples) > 5):
+        recent_samples.append([h, s, l])
+        recent_samples.pop(0)
+    else:
+        recent_samples.append([h, s, l])
+
+    global h_sample_counter
+    global l_sample_counter
+    global s_sample_counter
+    if(abs(h - carpet_values[0]) > h_deviation * 3):
+        print ("Hue Change")
+        if(h_sample_counter > 0):
+            put_boolean_to_table(network_table, "Hue Change", True)
+        else:
+            h_sample_counter += 1
+    else:  
+        put_boolean_to_table(network_table, "Hue Change", False)
+    if(abs(l - carpet_values[1]) > l_deviation * 3):
+        print ("Lightness Change")
+        if(l_sample_counter > 0):
+            put_boolean_to_table(network_table, "Lightness Change", True)
+        else:
+            l_sample_counter += 1
+    else:
+        put_boolean_to_table(network_table, "Lightness Change", False)
+    if(abs(s - carpet_values[2]) > s_deviation * 3):
+        print ("Saturation Change")
+        if(s_sample_counter > 0):
+            put_boolean_to_table(network_table, "Saturation Change", True)
+        else:
+            s_sample_counter += 1
+    else:
+            put_boolean_to_table(network_table, "Saturation Change", False)
+
+    return
+
+def put_boolean_to_table(network_table, title, boolean):
+    if(network_table != None):
+        network_table.putBoolean(title, boolean)
+    return
+
+
+
 
 # Get color of carpet for a few samples
 while True:
     # is the color we see very different from what we saw initially?
-    write_color_data(None)
 
+    write_color_data(None)
+    #sample = get_sample()
+    #write_sample(sample)
+
+    
+    sys.stdin.readline()
     
 
 
