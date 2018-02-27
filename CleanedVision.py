@@ -42,9 +42,7 @@ try:
 
 	lower_vib = int(pdata[4])
 	upper_vib = int(pdata[5])
-
 	rad = int(pdata[6])
-
 	bright = int(pdata[7])
 except (IOError, NameError, IndexError, ValueError) as e:
 	lower_hue = 0
@@ -145,13 +143,17 @@ def stopRun():
 
 # initialize the camera and grab a reference to the raw camera capture
 # writes color data to the network table
-cam = cv2.VideoCapture(args["camera"])
+#cam = cv2.VideoCapture(args["camera"])
+#LED.setColor([255, 0, 255])
 while True:
+    sys.stdin.readline()
     ColorSensor.run_color_sensor()
     color = nwt.getNumberArray('LED', (0, 0, 0))
+    color = (0, 0, 255)
     LED.setColor(color)
     bright = nwt.getNumber('brightness', 100.0)
-    _, image = cam.read()
+#    _, image = cam.read()
+    image = []
     if len(image) != 0:
         image = imutils.resize(image, width=xres, height=yres)
         cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)

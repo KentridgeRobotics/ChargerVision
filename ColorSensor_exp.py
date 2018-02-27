@@ -60,8 +60,33 @@ def get_sample():
 
 def write_sample(sample):
     pprinter.pprint(sample)
+ 
+
+def detect_change_in_values():
+    global previous_value
+    value = get_sample()
+    h,l,s = value
+    if (previous_value is not None):
+        h_prev, s_prev, l_prev = previous_value
+        # Compare h, compare l, and compare s
+        # If you see a difference, print something
+        if(abs(h - h_prev) > 100):
+            print("Hue Change")
+
+       #if(abs(s - s_prev) > s_deviation):
+            print("saturation Change")
+
+       #if(abs(l - l_prev) > l_deviation):
+            print("Luminosity Change")
+        
+        
+    previous_value = value
 
 
+def detect_change(v1, v2):
+    sample = [h,l,s]
+    #if(
+    
 
 def write_color_data(network_table):
 
@@ -157,7 +182,7 @@ def check_values(h, s, l, network_table):
     global h_sample_counter
     global l_sample_counter
     global s_sample_counter
-    if(abs(h - carpet_values[0]) > h_deviation * 3):
+    if(abs(h - carpet_values[0]) > h_deviation * 20): 
         print ("Hue Change")
         if(h_sample_counter > 0):
             put_boolean_to_table(network_table, "Hue Change", True)
@@ -165,7 +190,7 @@ def check_values(h, s, l, network_table):
             h_sample_counter += 1
     else:  
         put_boolean_to_table(network_table, "Hue Change", False)
-    if(abs(l - carpet_values[1]) > l_deviation * 3):
+    if(abs(l - carpet_values[1]) > l_deviation * 20):
         print ("Lightness Change")
         if(l_sample_counter > 0):
             put_boolean_to_table(network_table, "Lightness Change", True)
@@ -173,7 +198,7 @@ def check_values(h, s, l, network_table):
             l_sample_counter += 1
     else:
         put_boolean_to_table(network_table, "Lightness Change", False)
-    if(abs(s - carpet_values[2]) > s_deviation * 3):
+    if(abs(s - carpet_values[2]) > s_deviation * 20):
         print ("Saturation Change")
         if(s_sample_counter > 0):
             put_boolean_to_table(network_table, "Saturation Change", True)
@@ -192,4 +217,4 @@ def put_boolean_to_table(network_table, title, boolean):
 
 
 def run_color_sensor():
-    write_color_data(None)
+   write_color_data(None)
