@@ -38,7 +38,9 @@ class ObjectDetector:
         contours, hierarchy = cv2.findContours(thresh, 1, 2)
 
         for x in range(0, len(contours)):
-            contours.
+            cnt = contours[0]
+            M = cvw.moments(cnt)
+            print M
         return;
     
 
