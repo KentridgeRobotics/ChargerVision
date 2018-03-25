@@ -126,6 +126,7 @@ def findCubeContours(hsv):
 	return cnts
 
 def findTargetContours(hsv):
+	
 	pass
 
 # capture frames from the camera
