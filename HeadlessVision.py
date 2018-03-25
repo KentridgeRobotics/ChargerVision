@@ -152,18 +152,23 @@ def exithandler():
 # initialize the camera and grab a reference to the raw camera capture
 # writes color data to the network table
 cam = cv2.VideoCapture(args["camera"])
-LED.setColor([255, 0, 255])
 
+# main thread
 def main():
 	while True:
+		# gets LED color and camera brightnessfrom network tables
+		# and gets image from camera
 		color = nwt.getNumberArray('LED', (0, 0, 0))
-		#LED.setColor(color)
+		LED.setColor(color)
 		bright = nwt.getNumber('brightness', 100.0)
 		_, image = cam.read()
 		if image is not None:
+			# if image exists, resize to resolution specified above,
+			# sets camera brightness and processes image
 			image = imutils.resize(image, width=xres, height=yres)
 			cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)
 			frameUpdate(image)
 
+# starts main thread
 if __name__ == '__main__':
 	main()
