@@ -150,7 +150,6 @@ def exithandler():
 		f.write(str(lower_hue) + "," + str(upper_hue) + "," + str(lower_sat) + "," + str(upper_sat) + "," + str(lower_vib) + "," + str(upper_vib) + "," + str(rad) + "," + str(bright))
 
 # initialize the camera and grab a reference to the raw camera capture
-# writes color data to the network table
 cam = cv2.VideoCapture(args["camera"])
 
 # main thread
