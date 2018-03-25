@@ -7,7 +7,6 @@ from neopixel import *
 import signal
 import sys
 
-
 # LED strip configuration:
 LED_COUNT      = 16      # Number of LED pixels.
 LED_PIN        = 18      # GPIO pin connected to the pixels (18 uses PWM!).
@@ -22,8 +21,8 @@ LED_STRIP = ws.WS2811_STRIP_GRB # Strip type and colour ordering
 strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
 strip.begin()
 
+# Sets all LEDs to the provided array of RGB values
 def setColor(color):
 	for i in range(strip.numPixels()):
 		strip.setPixelColorRGB(i,int(color[0]),int(color[1]),int(color[2]))
 	strip.show()
-
