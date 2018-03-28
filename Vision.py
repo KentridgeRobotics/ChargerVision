@@ -32,33 +32,33 @@ try:
 		data = f.read()
 		pdata = data.split(",")
 		f.close()
-	lower_hue = int(pdata[0])
-	upper_hue = int(pdata[1])
+	cube_lower_hue = int(pdata[0])
+	cube_upper_hue = int(pdata[1])
 
-	lower_sat = int(pdata[2])
-	upper_sat = int(pdata[3])
+	cube_lower_sat = int(pdata[2])
+	cube_upper_sat = int(pdata[3])
 
-	lower_vib = int(pdata[4])
-	upper_vib = int(pdata[5])
-	rad = int(pdata[6])
+	cube_lower_vib = int(pdata[4])
+	cube_upper_vib = int(pdata[5])
+	cube_rad = int(pdata[6])
 	bright = int(pdata[7])
 except (IOError, NameError, IndexError, ValueError) as e:
-	lower_hue = 0
-	upper_hue = 255
+	cube_lower_hue = 0
+	cube_upper_hue = 255
 
-	lower_sat = 0
-	upper_sat = 255
+	cube_lower_sat = 0
+	cube_upper_sat = 255
 
-	lower_vib = 0
-	upper_vib = 255
+	cube_lower_vib = 0
+	cube_upper_vib = 255
 
-	rad = 10
+	cube_rad = 10
 
 	bright = 50
 
 # push settings to network tables
-nwt.putNumber('lower_hue', lower_hue)
-nwt.putNumber('upper_hue', upper_hue)
+nwt.putNumber('cube_lower_hue', cube_lower_hue)
+nwt.putNumber('cube_upper_hue', cube_upper_hue)
 
 nwt.putNumber('lower_sat', lower_sat)
 nwt.putNumber('upper_sat', upper_sat)
@@ -126,6 +126,9 @@ def findCubeContours(hsv):
 	return cnts
 
 def findTargetContours(hsv):
+	cv2.imshow('hsv',hsv)
+	cv2.waitKey(1)
+	mask = 
 	pass
 
 # capture frames from the camera
@@ -144,7 +147,8 @@ def stopRun():
 cam = cv2.VideoCapture(args["camera"])
 #LED.setColor([255, 0, 255])
 while True:
-    color = nwt.getNumberArray('LED', (0, 0, 0))
+    #color = nwt.getNumberArray('LED', (0, 0, 0))
+    color = [0,0,255]
     LED.setColor(color)
     bright = nwt.getNumber('brightness', 100.0)
     _, image = cam.read()
