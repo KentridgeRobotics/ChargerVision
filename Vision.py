@@ -45,6 +45,15 @@ try:
 	cube_lower_vib = int(pdata[4])
 	cube_upper_vib = int(pdata[5])
 	cube_rad = int(pdata[6])
+	
+	target_lower_hue = int(pdata[7])
+	target_upper_hue = int(pdata[8])
+
+	target_lower_sat = int(pdata[9])
+	target_upper_sat = int(pdata[10])
+
+	target_lower_vib = int(pdata[11])
+	target_upper_vib = int(pdata[12])
 	bright = int(pdata[7])
 except (IOError, NameError, IndexError, ValueError) as e:
 	cube_lower_hue = 0
@@ -59,26 +68,38 @@ except (IOError, NameError, IndexError, ValueError) as e:
 	cube_rad = 10
 
 	bright = 50
+	
+	target_lower_hue = 0
+	target_upper_hue = 255
 
-<<<<<<< HEAD
-# push settings to network tables
+	target_lower_sat = 0
+	target_upper_sat = 255
+
+	target_lower_vib = 0
+	target_upper_vib = 255
+
+# push current settings to network tables
 nwt.putNumber('cube_lower_hue', cube_lower_hue)
 nwt.putNumber('cube_upper_hue', cube_upper_hue)
-=======
-# push current settings to network tables
-nwt.putNumber('lower_hue', lower_hue)
-nwt.putNumber('upper_hue', upper_hue)
->>>>>>> 372f6ba1e829d96e41ba4f7fb094936d663a2e89
 
-nwt.putNumber('lower_sat', lower_sat)
-nwt.putNumber('upper_sat', upper_sat)
+nwt.putNumber('cube_lower_sat', cube_lower_sat)
+nwt.putNumber('cube_upper_sat', cube_upper_sat)
 
-nwt.putNumber('lower_vib', lower_vib)
-nwt.putNumber('upper_vib', upper_vib)
+nwt.putNumber('cube_lower_vib', cube_lower_vib)
+nwt.putNumber('cube_upper_vib', cube_upper_vib)
 
-nwt.putNumber('radius', rad)
+nwt.putNumber('radius', cube_rad)
 
 nwt.putNumber('brightness', bright)
+
+nwt.putNumber('target_lower_hue', target_lower_hue)
+nwt.putNumber('target_upper_hue', target_upper_hue)
+
+nwt.putNumber('target_lower_sat', target_lower_sat)
+nwt.putNumber('target_upper_sat', target_upper_sat)
+
+nwt.putNumber('target_lower_vib', target_lower_vib)
+nwt.putNumber('target_upper_vib', target_upper_vib)
 
 # push blank color settings to network tables
 nwt.putNumberArray('LED', [0, 0, 0])
@@ -91,25 +112,25 @@ yres = 128
 # finds yellow game cubes in provided hsv image
 def findCubeContours(hsv):
 	# get settings from network tables
-	lower_hue = nwt.getNumber('lower_hue', 0)
-	upper_hue = nwt.getNumber('upper_hue', 255)
+	cube_lower_hue = nwt.getNumber('cube_lower_hue', 0)
+	cube_upper_hue = nwt.getNumber('cube_upper_hue', 255)
 
-	lower_sat = nwt.getNumber('lower_sat', 0)
-	upper_sat = nwt.getNumber('upper_sat', 255)
+	cube_lower_sat = nwt.getNumber('cube_lower_sat', 0)
+	cube_upper_sat = nwt.getNumber('cube_upper_sat', 255)
 
-	lower_vib = nwt.getNumber('lower_vib', 0)
-	upper_vib = nwt.getNumber('upper_vib', 255)
+	cube_lower_vib = nwt.getNumber('cube_lower_vib', 0)
+	cube_upper_vib = nwt.getNumber('cube_upper_vib', 255)
 
-	rad = nwt.getNumber('radius', 10)
+	cube_rad = nwt.getNumber('radius', 10)
 
 	# creates arrays of low and upper bounds of hsv values to test for
-	lower_limit = np.array([lower_hue, lower_sat, lower_vib])
-	upper_limit = np.array([upper_hue, upper_sat, upper_vib])
+	cube_lower_limit = np.array([cube_lower_hue, cube_lower_sat, cube_lower_vib])
+	cube_upper_limit = np.array([cube_upper_hue, cube_upper_sat, cube_upper_vib])
 
 	# constructs a mask for the hsv bounds, then performs
 	# a series of dilations and erosions to remove any
 	# small blobs left in the mask
-	mask = cv2.inRange(hsv, lower_limit, upper_limit)
+	mask = cv2.inRange(hsv, cube_lower_limit, cube_upper_limit)
 	mask = cv2.erode(mask, None, iterations=2)
 	mask = cv2.dilate(mask, None, iterations=2)
 
@@ -130,7 +151,7 @@ def findCubeContours(hsv):
 			cy = int(M["m01"] / M["m00"])
 			center = (cx, cy)
 			# only proceed if the radius meets a minimum size
-			if radius > rad:
+			if radius > cube_rad:
 				# put data to network tables
 				nwt.putNumber('cubeX', cx)
 				nwt.putNumber('cubeY', cy)
@@ -138,10 +159,28 @@ def findCubeContours(hsv):
 	return cnts
 
 # finds vision targets in provided hsv image
-def findTargetContours(hsv):
+def findTargetContours(image, hsv):
+	# get settings from network tables
+	target_lower_hue = nwt.getNumber('target_lower_hue', 0)
+	target_upper_hue = nwt.getNumber('target_upper_hue', 255)
+
+	target_lower_sat = nwt.getNumber('target_lower_sat', 0)
+	target_upper_sat = nwt.getNumber('target_upper_sat', 255)
+
+	target_lower_vib = nwt.getNumber('target_lower_vib', 0)
+	target_upper_vib = nwt.getNumber('target_upper_vib', 255)
+
+	# creates arrays of low and upper bounds of hsv values to test for
+	target_lower_limit = np.array([target_lower_hue, target_lower_sat, target_lower_vib])
+	target_upper_limit = np.array([target_upper_hue, target_upper_sat, target_upper_vib])
+	
+	mask = cv2.inRange(hsv, target_lower_limit, target_upper_limit)
+	res = cv2.bitwise_and(image,image,mask=mask)
+	
 	cv2.imshow('hsv',hsv)
+	cv2.imshow('image',res)
 	cv2.waitKey(1)
-	mask = 
+	
 	pass
 
 # capture frames from the camera, converts to hsv
@@ -149,37 +188,25 @@ def findTargetContours(hsv):
 def frameUpdate(image):
 	hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 	findCubeContours(hsv)
-	findTargetContours(hsv)
+	findTargetContours(image, hsv)
 
 # catch ctrl+c exit and save data to file
 @atexit.register
 def exithandler():
 	with open('VisionData', 'w') as f:
 		f.truncate();
-		f.write(str(lower_hue) + "," + str(upper_hue) + "," + str(lower_sat) + "," + str(upper_sat) + "," + str(lower_vib) + "," + str(upper_vib) + "," + str(rad) + "," + str(bright))
+		f.write(str(cube_lower_hue) + "," + str(cube_upper_hue) + "," + str(cube_lower_sat) + "," + str(cube_upper_sat) + "," + str(cube_lower_vib) + "," + str(cube_upper_vib) + "," + str(cube_rad) + "," + str(bright) + "," + str(target_lower_hue) + "," + str(target_upper_hue) + "," + str(target_lower_sat) + "," + str(target_upper_sat) + "," + str(target_lower_vib) + "," + str(target_upper_vib))
 
 # initialize the camera and grab a reference to the raw camera capture
 cam = cv2.VideoCapture(args["camera"])
-<<<<<<< HEAD
-#LED.setColor([255, 0, 255])
-while True:
-    #color = nwt.getNumberArray('LED', (0, 0, 0))
-    color = [0,0,255]
-    LED.setColor(color)
-    bright = nwt.getNumber('brightness', 100.0)
-    _, image = cam.read()
-    if len(image) != 0:
-        image = imutils.resize(image, width=xres, height=yres)
-        cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)
-        frameUpdate(image)
-=======
 
 # main thread
 def main():
 	while True:
 		# gets LED color and camera brightnessfrom network tables
 		# and gets image from camera
-		color = nwt.getNumberArray('LED', (0, 0, 0))
+		#color = nwt.getNumberArray('LED', (0, 0, 0))
+		color = [0, 0, 255]
 		LED.setColor(color)
 		bright = nwt.getNumber('brightness', 100.0)
 		_, image = cam.read()
@@ -193,4 +220,3 @@ def main():
 # starts main thread
 if __name__ == '__main__':
 	main()
->>>>>>> 372f6ba1e829d96e41ba4f7fb094936d663a2e89
