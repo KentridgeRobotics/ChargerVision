@@ -31,7 +31,6 @@ NetworkTables.initialize(server=args["serverip"])
 nwt = NetworkTables.getTable(args["table"])
 
 # read and parse data file if present - otherwise use default values
-cv2.namedWindow('Control', )
 try:
 	with open('VisionData', 'r') as f:
 		data = f.read()
@@ -47,24 +46,14 @@ try:
 	cube_upper_vib = int(pdata[5])
 	cube_rad = int(pdata[6])
 	
-	#target_lower_hue = int(pdata[7])
-	#target_upper_hue = int(pdata[8])
+	target_lower_hue = int(pdata[7])
+	target_upper_hue = int(pdata[8])
 
-	#target_lower_sat = int(pdata[9])
-	#target_upper_sat = int(pdata[10])
+	target_lower_sat = int(pdata[9])
+	target_upper_sat = int(pdata[10])
 
-	#target_lower_vib = int(pdata[11])
-	#target_upper_vib = int(pdata[12])
-	cv2.createTrackbar('Lower_Hue', 'Control', int(pdata[7]), 0, nothing)
-	cv2.createTrackbar('Upper_Hue', 'Control', int(pdata[8]), 255, nothing)
-
-	cv2.createTrackbar('Lower_Sat', 'Control', int(pdata[9]), 0, nothing)
-	cv2.createTrackbar('Upper_Sat', 'Control', int(pdata[10]), 255, nothing)
-
-	cv2.createTrackbar('Lower_Vib', 'Control', int(pdata[11]), 0, nothing)
-	cv2.createTrackbar('Upper_Vib', 'Control', int(pdata[12]), 255, nothing)
-
-cv2.createTrackbar('Rad', 'Control', int(pdata[6]), 100, nothing)
+	target_lower_vib = int(pdata[11])
+	target_upper_vib = int(pdata[12])
 	bright = int(pdata[7])
 except (IOError, NameError, IndexError, ValueError) as e:
 	cube_lower_hue = 0
@@ -171,24 +160,15 @@ def findCubeContours(hsv):
 
 # finds vision targets in provided hsv image
 def findTargetContours(image, hsv):
-	# color trackbars
-	target_lower_hue = cv2.getTrackbarPos('Lower_Hue', 'Control')
-	target_upper_hue = cv2.getTrackbarPos('Upper_Hue', 'Control')
-	
-	target_lower_sat = cv2.getTrackbarPos('Lower_Sat', 'Control')
-	target_upper_sat = cv2.getTrackbarPos('Upper_Sat', 'Control')
-	
-	target_lower_vib = cv2.getTrackbarPos('Lower_Vib', 'Control')
-	target_upper_vib = cv2.getTrackbarPos('Upper_Vib', 'Control')
 	# get settings from network tables
-	#target_lower_hue = nwt.getNumber('target_lower_hue', 0)
-	#target_upper_hue = nwt.getNumber('target_upper_hue', 255)
+	target_lower_hue = nwt.getNumber('target_lower_hue', 0)
+	target_upper_hue = nwt.getNumber('target_upper_hue', 255)
 
-	#target_lower_sat = nwt.getNumber('target_lower_sat', 0)
-	#target_upper_sat = nwt.getNumber('target_upper_sat', 255)
+	target_lower_sat = nwt.getNumber('target_lower_sat', 0)
+	target_upper_sat = nwt.getNumber('target_upper_sat', 255)
 
-	#target_lower_vib = nwt.getNumber('target_lower_vib', 0)
-	#target_upper_vib = nwt.getNumber('target_upper_vib', 255)
+	target_lower_vib = nwt.getNumber('target_lower_vib', 0)
+	target_upper_vib = nwt.getNumber('target_upper_vib', 255)
 
 	# creates arrays of low and upper bounds of hsv values to test for
 	target_lower_limit = np.array([target_lower_hue, target_lower_sat, target_lower_vib])
