@@ -46,14 +46,14 @@ try:
 	cube_upper_vib = int(pdata[5])
 	cube_rad = int(pdata[6])
 	
-	target_lower_hue = int(pdata[7])
-	target_upper_hue = int(pdata[8])
+	target_lower_hue = int(pdata[8])
+	target_upper_hue = int(pdata[9])
 
-	target_lower_sat = int(pdata[9])
-	target_upper_sat = int(pdata[10])
+	target_lower_sat = int(pdata[10])
+	target_upper_sat = int(pdata[11])
 
-	target_lower_vib = int(pdata[11])
-	target_upper_vib = int(pdata[12])
+	target_lower_vib = int(pdata[12])
+	target_upper_vib = int(pdata[13])
 	bright = int(pdata[7])
 except (IOError, NameError, IndexError, ValueError) as e:
 	cube_lower_hue = 0
