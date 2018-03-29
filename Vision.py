@@ -23,6 +23,8 @@ ap.add_argument("-i", "--serverip", type=str, default="10.37.86.2", help="Networ
 ap.add_argument("-a", "--table", type=str, default="SmartDashboard", help="NetworkTables Table")
 args = vars(ap.parse_args())
 
+color = [0,0,255]
+
 def nothing(x):
 	pass
 
@@ -44,6 +46,7 @@ try:
 
 	cube_lower_vib = int(pdata[4])
 	cube_upper_vib = int(pdata[5])
+
 	cube_rad = int(pdata[6])
 	
 	target_lower_hue = int(pdata[8])
@@ -54,6 +57,7 @@ try:
 
 	target_lower_vib = int(pdata[12])
 	target_upper_vib = int(pdata[13])
+
 	bright = int(pdata[7])
 except (IOError, NameError, IndexError, ValueError) as e:
 	cube_lower_hue = 0
@@ -79,27 +83,27 @@ except (IOError, NameError, IndexError, ValueError) as e:
 	target_upper_vib = 255
 
 # push current settings to network tables
-nwt.putNumber('cube_lower_hue', cube_lower_hue)
-nwt.putNumber('cube_upper_hue', cube_upper_hue)
+nwt.putNumber('cube/lower_hue', cube_lower_hue)
+nwt.putNumber('cube/upper_hue', cube_upper_hue)
 
-nwt.putNumber('cube_lower_sat', cube_lower_sat)
-nwt.putNumber('cube_upper_sat', cube_upper_sat)
+nwt.putNumber('cube/lower_sat', cube_lower_sat)
+nwt.putNumber('cube/upper_sat', cube_upper_sat)
 
-nwt.putNumber('cube_lower_vib', cube_lower_vib)
-nwt.putNumber('cube_upper_vib', cube_upper_vib)
+nwt.putNumber('cube/lower_vib', cube_lower_vib)
+nwt.putNumber('cube/upper_vib', cube_upper_vib)
 
 nwt.putNumber('radius', cube_rad)
 
 nwt.putNumber('brightness', bright)
 
-nwt.putNumber('target_lower_hue', target_lower_hue)
-nwt.putNumber('target_upper_hue', target_upper_hue)
+nwt.putNumber('target/lower_hue', target_lower_hue)
+nwt.putNumber('target/upper_hue', target_upper_hue)
 
-nwt.putNumber('target_lower_sat', target_lower_sat)
-nwt.putNumber('target_upper_sat', target_upper_sat)
+nwt.putNumber('target/lower_sat', target_lower_sat)
+nwt.putNumber('target/upper_sat', target_upper_sat)
 
-nwt.putNumber('target_lower_vib', target_lower_vib)
-nwt.putNumber('target_upper_vib', target_upper_vib)
+nwt.putNumber('target/lower_vib', target_lower_vib)
+nwt.putNumber('target/upper_vib', target_upper_vib)
 
 # push blank color settings to network tables
 nwt.putNumberArray('LED', [0, 0, 0])
@@ -112,14 +116,14 @@ yres = 128
 # finds yellow game cubes in provided hsv image
 def findCubeContours(hsv):
 	# get settings from network tables
-	cube_lower_hue = nwt.getNumber('cube_lower_hue', 0)
-	cube_upper_hue = nwt.getNumber('cube_upper_hue', 255)
+	cube_lower_hue = nwt.getNumber('cube/lower_hue', 0)
+	cube_upper_hue = nwt.getNumber('cube/upper_hue', 255)
 
-	cube_lower_sat = nwt.getNumber('cube_lower_sat', 0)
-	cube_upper_sat = nwt.getNumber('cube_upper_sat', 255)
+	cube_lower_sat = nwt.getNumber('cube/lower_sat', 0)
+	cube_upper_sat = nwt.getNumber('cube/upper_sat', 255)
 
-	cube_lower_vib = nwt.getNumber('cube_lower_vib', 0)
-	cube_upper_vib = nwt.getNumber('cube_upper_vib', 255)
+	cube_lower_vib = nwt.getNumber('cube/lower_vib', 0)
+	cube_upper_vib = nwt.getNumber('cube/upper_vib', 255)
 
 	cube_rad = nwt.getNumber('radius', 10)
 
@@ -161,14 +165,14 @@ def findCubeContours(hsv):
 # finds vision targets in provided hsv image
 def findTargetContours(image, hsv):
 	# get settings from network tables
-	target_lower_hue = nwt.getNumber('target_lower_hue', 0)
-	target_upper_hue = nwt.getNumber('target_upper_hue', 255)
+	target_lower_hue = nwt.getNumber('target/lower_hue', 0)
+	target_upper_hue = nwt.getNumber('target/upper_hue', 255)
 
-	target_lower_sat = nwt.getNumber('target_lower_sat', 0)
-	target_upper_sat = nwt.getNumber('target_upper_sat', 255)
+	target_lower_sat = nwt.getNumber('target/lower_sat', 0)
+	target_upper_sat = nwt.getNumber('target/upper_sat', 255)
 
-	target_lower_vib = nwt.getNumber('target_lower_vib', 0)
-	target_upper_vib = nwt.getNumber('target_upper_vib', 255)
+	target_lower_vib = nwt.getNumber('target/lower_vib', 0)
+	target_upper_vib = nwt.getNumber('target/upper_vib', 255)
 
 	# creates arrays of low and upper bounds of hsv values to test for
 	target_lower_limit = np.array([target_lower_hue, target_lower_sat, target_lower_vib])
@@ -180,7 +184,6 @@ def findTargetContours(image, hsv):
 	cv2.imshow('hsv',hsv)
 	cv2.imshow('image',res)
 	cv2.waitKey(1)
-	
 	pass
 
 # capture frames from the camera, converts to hsv
@@ -199,14 +202,12 @@ def exithandler():
 
 # initialize the camera and grab a reference to the raw camera capture
 cam = cv2.VideoCapture(args["camera"])
-
 # main thread
 def main():
 	while True:
 		# gets LED color and camera brightnessfrom network tables
 		# and gets image from camera
 		#color = nwt.getNumberArray('LED', (0, 0, 0))
-		color = [0, 0, 255]
 		LED.setColor(color)
 		bright = nwt.getNumber('brightness', 100.0)
 		_, image = cam.read()
