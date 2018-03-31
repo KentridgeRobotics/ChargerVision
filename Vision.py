@@ -7,6 +7,7 @@ import sys
 import atexit
 import pprint
 
+import netifaces as ni
 from networktables import NetworkTables
 import argparse
 
@@ -24,8 +25,8 @@ ap.add_argument("-a", "--table", type=str, default="SmartDashboard", help="Netwo
 ap.add_argument("-o", "--output", action='store_true', help="Pushes frames to X server")
 args = vars(ap.parse_args())
 
-color = [0,0,255]
-
+color = [0,255,0]
+dataFile = "Data"
 def nothing(x):
 	pass
 
@@ -39,7 +40,7 @@ nwt.putString("rpi_ip", ip)
 
 # read and parse data file if present - otherwise use default values
 try:
-	with open('VisionData', 'r') as f:
+	with open(dataFile, 'r') as f:
 		data = f.read()
 		pdata = data.split(",")
 		f.close()
@@ -186,9 +187,10 @@ def findTargetContours(image, hsv):
 	mask = cv2.inRange(hsv, target_lower_limit, target_upper_limit)
 	res = cv2.bitwise_and(image,image,mask=mask)
 	
-	if args.output:
+	if args["output"]:
 		cv2.imshow('hsv',hsv)
-		cv2.imshow('image',res)
+		cv2.imshow('image',image)
+		cv2.imshow('mask',res)
 		cv2.waitKey(1)
 	pass
 
@@ -202,18 +204,23 @@ def frameUpdate(image):
 # catch ctrl+c exit and save data to file
 @atexit.register
 def exithandler():
-	with open('VisionData', 'w') as f:
+	with open(dataFile, 'w') as f:
 		f.truncate();
 		f.write(str(cube_lower_hue) + "," + str(cube_upper_hue) + "," + str(cube_lower_sat) + "," + str(cube_upper_sat) + "," + str(cube_lower_vib) + "," + str(cube_upper_vib) + "," + str(cube_rad) + "," + str(bright) + "," + str(target_lower_hue) + "," + str(target_upper_hue) + "," + str(target_lower_sat) + "," + str(target_upper_sat) + "," + str(target_lower_vib) + "," + str(target_upper_vib))
 
 # initialize the camera and grab a reference to the raw camera capture
 cam = cv2.VideoCapture(args["camera"])
+cam.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+cam.set(cv2.CAP_PROP_SATURATION, 0.20)
+cam.set(cv2.CAP_PROP_CONTRAST, 0.1)
+cam.set(cv2.CAP_PROP_GAIN, 0.15)
 # main thread
 def main():
 	while True:
 		# gets LED color and camera brightnessfrom network tables
 		# and gets image from camera
-		#color = nwt.getNumberArray('LED', (0, 0, 0))
+		if nwt.getString('RobotMode', "disabled") != "autonomous":
+			color = nwt.getNumberArray('LED', (0, 0, 0))
 		LED.setColor(color)
 		bright = nwt.getNumber('brightness', 100.0)
 		_, image = cam.read()
