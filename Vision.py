@@ -21,6 +21,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--camera", type=int, default=0, help="camera id")
 ap.add_argument("-i", "--serverip", type=str, default="10.37.86.2", help="NetworkTables IP")
 ap.add_argument("-a", "--table", type=str, default="SmartDashboard", help="NetworkTables Table")
+ap.add_argument("-o", "--output", action='store_true', help="Pushes frames to X server")
 args = vars(ap.parse_args())
 
 color = [0,0,255]
@@ -31,6 +32,10 @@ def nothing(x):
 # initialize NetworkTables
 NetworkTables.initialize(server=args["serverip"])
 nwt = NetworkTables.getTable(args["table"])
+
+# push ip to NetworkTables
+ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
+nwt.putString("rpi_ip", ip)
 
 # read and parse data file if present - otherwise use default values
 try:
@@ -181,9 +186,10 @@ def findTargetContours(image, hsv):
 	mask = cv2.inRange(hsv, target_lower_limit, target_upper_limit)
 	res = cv2.bitwise_and(image,image,mask=mask)
 	
-	cv2.imshow('hsv',hsv)
-	cv2.imshow('image',res)
-	cv2.waitKey(1)
+	if args.output:
+		cv2.imshow('hsv',hsv)
+		cv2.imshow('image',res)
+		cv2.waitKey(1)
 	pass
 
 # capture frames from the camera, converts to hsv
