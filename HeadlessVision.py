@@ -9,6 +9,7 @@ import pprint
 
 from networktables import NetworkTables
 import argparse
+import netifaces as ni
 
 import numpy as np
 import cv2
@@ -29,6 +30,10 @@ def nothing(x):
 # initialize NetworkTables
 NetworkTables.initialize(server=args["serverip"])
 nwt = NetworkTables.getTable(args["table"])
+
+# push ip to NetworkTables
+ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
+nwt.putString("rpi_ip", ip)
 
 # read and parse data file if present - otherwise use default values
 try:
