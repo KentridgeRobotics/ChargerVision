@@ -99,3 +99,6 @@ ENV/
 
 # mypy
 .mypy_cache/
+/ChargerVision.pyproj
+/ChargerVision.sln
+/.vs

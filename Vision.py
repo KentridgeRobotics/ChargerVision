@@ -7,7 +7,7 @@ import sys
 import atexit
 import pprint
 
-import netifaces as ni
+#import netifaces as ni
 from networktables import NetworkTables
 import argparse
 
@@ -15,17 +15,17 @@ import numpy as np
 import cv2
 import imutils
 
-import LED
-
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--camera", type=int, default=0, help="camera id")
 ap.add_argument("-i", "--serverip", type=str, default="10.37.86.2", help="NetworkTables IP")
 ap.add_argument("-a", "--table", type=str, default="SmartDashboard", help="NetworkTables Table")
-ap.add_argument("-o", "--output", action='store_true', help="Pushes frames to X server")
+ap.add_argument("-g", "--gui", action='store_true', help="Enables X GUI")
+ap.add_argument("-l", "--led", action='store_true', help="Forcefully enables LEDs")
+ap.add_argument("-e", "--environment", action='store_true', help="Disables features for a non-Pi environment")
 args = vars(ap.parse_args())
 
-color = [0,255,0]
+LEDcolor = [0,255,0]
 dataFile = "Data"
 def nothing(x):
 	pass
@@ -35,8 +35,13 @@ NetworkTables.initialize(server=args["serverip"])
 nwt = NetworkTables.getTable(args["table"])
 
 # push ip to NetworkTables
-ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
-nwt.putString("rpi_ip", ip)
+if not args["environment"]:
+	import LED
+	ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
+	nwt.putString("rpi_ip", ip)
+
+# Control Window
+cv2.namedWindow('Control', cv2.WINDOW_NORMAL)
 
 # read and parse data file if present - otherwise use default values
 try:
@@ -77,7 +82,7 @@ except (IOError, NameError, IndexError, ValueError) as e:
 
 	cube_rad = 10
 
-	bright = 50
+	bright = 15
 	
 	target_lower_hue = 0
 	target_upper_hue = 255
@@ -88,28 +93,51 @@ except (IOError, NameError, IndexError, ValueError) as e:
 	target_lower_vib = 0
 	target_upper_vib = 255
 
-# push current settings to network tables
-nwt.putNumber('cube/lower_hue', cube_lower_hue)
-nwt.putNumber('cube/upper_hue', cube_upper_hue)
-
-nwt.putNumber('cube/lower_sat', cube_lower_sat)
-nwt.putNumber('cube/upper_sat', cube_upper_sat)
-
-nwt.putNumber('cube/lower_vib', cube_lower_vib)
-nwt.putNumber('cube/upper_vib', cube_upper_vib)
-
-nwt.putNumber('radius', cube_rad)
-
-nwt.putNumber('brightness', bright)
-
-nwt.putNumber('target/lower_hue', target_lower_hue)
-nwt.putNumber('target/upper_hue', target_upper_hue)
-
-nwt.putNumber('target/lower_sat', target_lower_sat)
-nwt.putNumber('target/upper_sat', target_upper_sat)
-
-nwt.putNumber('target/lower_vib', target_lower_vib)
-nwt.putNumber('target/upper_vib', target_upper_vib)
+if args["gui"]:
+	cv2.createTrackbar('Cube_Lower_Hue', 'Control', cube_lower_hue, 255, nothing)
+	cv2.createTrackbar('Cube_Upper_Hue', 'Control', cube_upper_hue, 255, nothing)
+	
+	cv2.createTrackbar('Cube_Lower_Sat', 'Control', cube_lower_sat, 255, nothing)
+	cv2.createTrackbar('Cube_Upper_Sat', 'Control', cube_upper_sat, 255, nothing)
+	
+	cv2.createTrackbar('Cube_Lower_Vib', 'Control', cube_lower_vib, 255, nothing)
+	cv2.createTrackbar('Cube_Upper_Vib', 'Control', cube_upper_vib, 255, nothing)
+	
+	cv2.createTrackbar('Cube_Rad', 'Control', cube_rad, 100, nothing)
+	
+	cv2.createTrackbar('Target_Lower_Hue', 'Control', target_lower_hue, 255, nothing)
+	cv2.createTrackbar('Target_Upper_Hue', 'Control', target_upper_hue, 255, nothing)
+	
+	cv2.createTrackbar('Target_Lower_Sat', 'Control', target_lower_sat, 255, nothing)
+	cv2.createTrackbar('Target_Upper_Sat', 'Control', target_upper_sat, 255, nothing)
+	
+	cv2.createTrackbar('Target_Lower_Vib', 'Control', target_lower_vib, 255, nothing)
+	cv2.createTrackbar('Target_Upper_Vib', 'Control', target_upper_vib, 255, nothing)
+	
+	cv2.createTrackbar('Brightness', 'Control', bright, 100, nothing)
+else:
+	# push current settings to network tables
+	nwt.putNumber('cube/lower_hue', cube_lower_hue)
+	nwt.putNumber('cube/upper_hue', cube_upper_hue)
+	
+	nwt.putNumber('cube/lower_sat', cube_lower_sat)
+	nwt.putNumber('cube/upper_sat', cube_upper_sat)
+	
+	nwt.putNumber('cube/lower_vib', cube_lower_vib)
+	nwt.putNumber('cube/upper_vib', cube_upper_vib)
+	
+	nwt.putNumber('cube/radius', cube_rad)
+	
+	nwt.putNumber('brightness', bright)
+	
+	nwt.putNumber('target/lower_hue', target_lower_hue)
+	nwt.putNumber('target/upper_hue', target_upper_hue)
+	
+	nwt.putNumber('target/lower_sat', target_lower_sat)
+	nwt.putNumber('target/upper_sat', target_upper_sat)
+	
+	nwt.putNumber('target/lower_vib', target_lower_vib)
+	nwt.putNumber('target/upper_vib', target_upper_vib)
 
 # push blank color settings to network tables
 nwt.putNumberArray('LED', [0, 0, 0])
@@ -121,17 +149,29 @@ yres = 128
 
 # finds yellow game cubes in provided hsv image
 def findCubeContours(hsv):
-	# get settings from network tables
-	cube_lower_hue = nwt.getNumber('cube/lower_hue', 0)
-	cube_upper_hue = nwt.getNumber('cube/upper_hue', 255)
+	# get settings from network tables or trackbars
+	if args["gui"]:
+		cube_lower_hue = cv2.getTrackbarPos('Cube_Lower_Hue', 'Control')
+		cube_upper_hue = cv2.getTrackbarPos('Cube_Upper_Hue', 'Control')
+		
+		cube_lower_sat = cv2.getTrackbarPos('Cube_Lower_Sat', 'Control')
+		cube_upper_sat = cv2.getTrackbarPos('Cube_Upper_Sat', 'Control')
+		
+		cube_lower_vib = cv2.getTrackbarPos('Cube_Lower_Vib', 'Control')
+		cube_upper_vib = cv2.getTrackbarPos('Cube_Upper_Vib', 'Control')
+		
+		cube_rad = cv2.getTrackbarPos('Cube_Rad', 'Control')
+	else:
+		cube_lower_hue = nwt.getNumber('cube/lower_hue', 0)
+		cube_upper_hue = nwt.getNumber('cube/upper_hue', 255)
 
-	cube_lower_sat = nwt.getNumber('cube/lower_sat', 0)
-	cube_upper_sat = nwt.getNumber('cube/upper_sat', 255)
+		cube_lower_sat = nwt.getNumber('cube/lower_sat', 0)
+		cube_upper_sat = nwt.getNumber('cube/upper_sat', 255)
 
-	cube_lower_vib = nwt.getNumber('cube/lower_vib', 0)
-	cube_upper_vib = nwt.getNumber('cube/upper_vib', 255)
+		cube_lower_vib = nwt.getNumber('cube/lower_vib', 0)
+		cube_upper_vib = nwt.getNumber('cube/upper_vib', 255)
 
-	cube_rad = nwt.getNumber('radius', 10)
+		cube_rad = nwt.getNumber('cube/radius', 10)
 
 	# creates arrays of low and upper bounds of hsv values to test for
 	cube_lower_limit = np.array([cube_lower_hue, cube_lower_sat, cube_lower_vib])
@@ -170,15 +210,25 @@ def findCubeContours(hsv):
 
 # finds vision targets in provided hsv image
 def findTargetContours(image, hsv):
-	# get settings from network tables
-	target_lower_hue = nwt.getNumber('target/lower_hue', 0)
-	target_upper_hue = nwt.getNumber('target/upper_hue', 255)
+	# get settings from network tables or trackbars
+	if args["gui"]:
+		target_lower_hue = cv2.getTrackbarPos('Target_Lower_Hue', 'Control')
+		target_upper_hue = cv2.getTrackbarPos('Target_Upper_Hue', 'Control')
+		
+		target_lower_sat = cv2.getTrackbarPos('Target_Lower_Sat', 'Control')
+		target_upper_sat = cv2.getTrackbarPos('Target_Upper_Sat', 'Control')
+		
+		target_lower_vib = cv2.getTrackbarPos('Target_Lower_Vib', 'Control')
+		target_upper_vib = cv2.getTrackbarPos('Target_Upper_Vib', 'Control')
+	else:
+		target_lower_hue = nwt.getNumber('target/lower_hue', 0)
+		target_upper_hue = nwt.getNumber('target/upper_hue', 255)
 
-	target_lower_sat = nwt.getNumber('target/lower_sat', 0)
-	target_upper_sat = nwt.getNumber('target/upper_sat', 255)
+		target_lower_sat = nwt.getNumber('target/lower_sat', 0)
+		target_upper_sat = nwt.getNumber('target/upper_sat', 255)
 
-	target_lower_vib = nwt.getNumber('target/lower_vib', 0)
-	target_upper_vib = nwt.getNumber('target/upper_vib', 255)
+		target_lower_vib = nwt.getNumber('target/lower_vib', 0)
+		target_upper_vib = nwt.getNumber('target/upper_vib', 255)
 
 	# creates arrays of low and upper bounds of hsv values to test for
 	target_lower_limit = np.array([target_lower_hue, target_lower_sat, target_lower_vib])
@@ -187,7 +237,7 @@ def findTargetContours(image, hsv):
 	mask = cv2.inRange(hsv, target_lower_limit, target_upper_limit)
 	res = cv2.bitwise_and(image,image,mask=mask)
 	
-	if args["output"]:
+	if args["gui"]:
 		cv2.imshow('hsv',hsv)
 		cv2.imshow('image',image)
 		cv2.imshow('mask',res)
@@ -204,6 +254,53 @@ def frameUpdate(image):
 # catch ctrl+c exit and save data to file
 @atexit.register
 def exithandler():
+	if args["gui"]:
+		cube_lower_hue = cv2.getTrackbarPos('Cube_Lower_Hue', 'Control')
+		cube_upper_hue = cv2.getTrackbarPos('Cube_Upper_Hue', 'Control')
+		
+		cube_lower_sat = cv2.getTrackbarPos('Cube_Lower_Sat', 'Control')
+		cube_upper_sat = cv2.getTrackbarPos('Cube_Upper_Sat', 'Control')
+		
+		cube_lower_vib = cv2.getTrackbarPos('Cube_Lower_Vib', 'Control')
+		cube_upper_vib = cv2.getTrackbarPos('Cube_Upper_Vib', 'Control')
+		
+		cube_rad = cv2.getTrackbarPos('Cube_Rad', 'Control')
+		
+		target_lower_hue = cv2.getTrackbarPos('Target_Lower_Hue', 'Control')
+		target_upper_hue = cv2.getTrackbarPos('Target_Upper_Hue', 'Control')
+		
+		target_lower_sat = cv2.getTrackbarPos('Target_Lower_Sat', 'Control')
+		target_upper_sat = cv2.getTrackbarPos('Target_Upper_Sat', 'Control')
+		
+		target_lower_vib = cv2.getTrackbarPos('Target_Lower_Vib', 'Control')
+		target_upper_vib = cv2.getTrackbarPos('Target_Upper_Vib', 'Control')
+		
+		bright = cv2.getTrackbarPos('Brightness', 'Control')
+		
+		cv2.destroyAllWindows()
+	else:
+		cube_lower_hue = nwt.getNumber('cube/lower_hue', 0)
+		cube_upper_hue = nwt.getNumber('cube/upper_hue', 255)
+
+		cube_lower_sat = nwt.getNumber('cube/lower_sat', 0)
+		cube_upper_sat = nwt.getNumber('cube/upper_sat', 255)
+
+		cube_lower_vib = nwt.getNumber('cube/lower_vib', 0)
+		cube_upper_vib = nwt.getNumber('cube/upper_vib', 255)
+
+		cube_rad = nwt.getNumber('cube/radius', 10)
+		
+		target_lower_hue = nwt.getNumber('target/lower_hue', 0)
+		target_upper_hue = nwt.getNumber('target/upper_hue', 255)
+
+		target_lower_sat = nwt.getNumber('target/lower_sat', 0)
+		target_upper_sat = nwt.getNumber('target/upper_sat', 255)
+
+		target_lower_vib = nwt.getNumber('target/lower_vib', 0)
+		target_upper_vib = nwt.getNumber('target/upper_vib', 255)
+
+		bright = nwt.getNumber('brightness', 15.0)
+	
 	with open(dataFile, 'w') as f:
 		f.truncate();
 		f.write(str(cube_lower_hue) + "," + str(cube_upper_hue) + "," + str(cube_lower_sat) + "," + str(cube_upper_sat) + "," + str(cube_lower_vib) + "," + str(cube_upper_vib) + "," + str(cube_rad) + "," + str(bright) + "," + str(target_lower_hue) + "," + str(target_upper_hue) + "," + str(target_lower_sat) + "," + str(target_upper_sat) + "," + str(target_lower_vib) + "," + str(target_upper_vib))
@@ -214,17 +311,28 @@ cam.set(cv2.CAP_PROP_AUTOFOCUS, 0)
 cam.set(cv2.CAP_PROP_SATURATION, 0.20)
 cam.set(cv2.CAP_PROP_CONTRAST, 0.1)
 cam.set(cv2.CAP_PROP_GAIN, 0.15)
+
+color = [0, 0, 0]
+
 # main thread
 def main():
 	while True:
 		# gets LED color and camera brightnessfrom network tables
 		# and gets image from camera
-		if nwt.getString('RobotMode', "disabled") != "autonomous":
+		if nwt.getNumber('RobotMode', 0) != 2:
 			color = nwt.getNumberArray('LED', (0, 0, 0))
-		LED.setColor(color)
-		bright = nwt.getNumber('brightness', 100.0)
-		_, image = cam.read()
-		if image is not None:
+		else:
+			color = LEDcolor
+		if args["led"]:
+			color = LEDcolor
+		if not args["environment"]:
+			LED.setColor(color)
+		if args["gui"]:
+			bright = cv2.getTrackbarPos('Brightness', 'Control')
+		else:
+			bright = nwt.getNumber('brightness', 15.0)
+		check, image = cam.read()
+		if check:
 			# if image exists, resize to resolution specified above,
 			# sets camera brightness and processes image
 			image = imutils.resize(image, width=xres, height=yres)

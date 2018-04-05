@@ -40,7 +40,7 @@ class ObjectDetector:
         for x in range(0, len(contours)):
             cnt = contours[0]
             M = cvw.moments(cnt)
-            print M
+            print(M)
         return;
     
 
