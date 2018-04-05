@@ -10,3 +10,17 @@ Vision program written to run on a raspberry pi. The purpose of this program is 
 * Imutils 0.4.6
 * Netifaces 0.10.6
 * pprint 0.1
+
+## Usage
+Run with Python
+
+Default Raspberry Pi: `python3 Vision.py`
+
+Argument | Usage
+--- | ---
+-c | Camera ID
+-i | NetworkTables IP
+-a | NetworkTables Table
+-g | Output to X
+-l | Forcefully Enable LEDs
+-e | Disables unnecessary RaspberryPi code for testing vision on other devices
