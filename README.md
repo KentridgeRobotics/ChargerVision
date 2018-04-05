@@ -9,7 +9,7 @@ Vision program written to run on a raspberry pi. The purpose of this program is 
 * PyNetworkTables 2018.1.0
 * Imutils 0.4.6
 * Netifaces 0.10.6
-* pprint 0.1
+* Pprint 0.1
 
 ## Usage
 Run with Python
