@@ -30,6 +30,14 @@ dataFile = "Data.dat"
 def nothing(x):
 	pass
 
+# reslution to resize input to
+# low resolution used to speed up processing
+xres = 160
+yres = 128
+
+# horizontal fov of camera for calculating angle
+horizontal_fov = 64.4
+
 # initialize NetworkTables
 NetworkTables.initialize(server=args["serverip"])
 nwt = NetworkTables.getTable(args["table"])
@@ -96,10 +104,7 @@ else:
 	nwt.putNumber('target/lower_vib', target_lower_vib)
 	nwt.putNumber('target/upper_vib', target_upper_vib)
 
-# reslution to resize input to
-# low resolution used to speed up processing
-xres = 160
-yres = 128
+angle_per_pixel = horizontal_fov / xres
 
 # finds vision targets in provided hsv image
 def findTargetContours(image, hsv):
@@ -128,13 +133,15 @@ def findTargetContours(image, hsv):
 	target_upper_limit = np.array([target_upper_hue, target_upper_sat, target_upper_vib])
 	
 	mask = cv2.inRange(hsv, target_lower_limit, target_upper_limit)
-	res = cv2.bitwise_and(image,image,mask=mask)
+	if args["gui"]:
+		res = cv2.bitwise_and(image,image,mask=mask)
 	
 	cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 	cnts = imutils.grab_contours(cnts)
 	
 	height, width = image.shape[:2]
-	contours = np.zeros((height, width, 3), np.uint8)
+	if args["gui"]:
+		contours = np.zeros((height, width, 3), np.uint8)
 	
 	sorted_rects = []
 	
@@ -145,11 +152,17 @@ def findTargetContours(image, hsv):
 			c = c.astype("int")
 			rect = cv2.minAreaRect(c)
 			sorted_rects.append(rect)
-			cv2.drawContours(contours, [c], -1, (0, 255, 0), 1)
+			if args["gui"]:
+				cv2.drawContours(contours, [c], -1, (0, 255, 0), 1)
 	
 	sorted_rects = sorted(sorted_rects, key=lambda cnt: cnt[0][0])
 	
+	center_pnts = []
+	
 	left = False
+	
+	if args["gui"]:
+		cv2.circle(res, (np.round(width / 2).astype("int"), np.round(height / 2).astype("int")), 3, (0, 0, 255), 1)
 	
 	for rect in sorted_rects:
 		angle = rect[2]
@@ -160,8 +173,19 @@ def findTargetContours(image, hsv):
 			if left:
 				rightMid = rect[0]
 				mid = (np.round((leftMid[0] + rightMid[0]) * 0.5).astype("int"), np.round((leftMid[1] + rightMid[1]) * 0.5).astype("int"))
-				cv2.circle(res, mid, 3, (255, 0, 0), 1)
+				center_pnts.append(mid)
+				if args["gui"]:
+					cv2.circle(res, mid, 3, (255, 0, 0), 1)
 				left = False
+				
+	angles = []
+	
+	center = width / 2
+	
+	for pnt in center_pnts:
+		x_dist = pnt[0] - center
+		angle = x_dist * angle_per_pixel
+		angles.append(angle)
 	
 	if args["gui"]:
 		cv2.imshow('hsv',hsv)
