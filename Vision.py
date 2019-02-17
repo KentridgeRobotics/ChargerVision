@@ -7,7 +7,7 @@ import sys
 import atexit
 import pprint
 
-#import netifaces as ni
+import netifaces as ni
 from networktables import NetworkTables
 import argparse
 
@@ -21,11 +21,9 @@ ap.add_argument("-c", "--camera", type=int, default=0, help="camera id")
 ap.add_argument("-i", "--serverip", type=str, default="10.37.86.2", help="NetworkTables IP")
 ap.add_argument("-a", "--table", type=str, default="SmartDashboard", help="NetworkTables Table")
 ap.add_argument("-g", "--gui", action='store_true', help="Enables X GUI")
-ap.add_argument("-l", "--led", action='store_true', help="Forcefully enables LEDs")
 ap.add_argument("-e", "--environment", action='store_true', help="Disables features for a non-Pi environment")
 args = vars(ap.parse_args())
 
-LEDcolor = [0,255,0]
 dataFile = "Data"
 def nothing(x):
 	pass
@@ -36,12 +34,12 @@ nwt = NetworkTables.getTable(args["table"])
 
 # push ip to NetworkTables
 if not args["environment"]:
-	import LED
 	ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
 	nwt.putString("rpi_ip", ip)
 
 # Control Window
-cv2.namedWindow('Control', cv2.WINDOW_NORMAL)
+if args["gui"]:
+	cv2.namedWindow('Control', cv2.WINDOW_NORMAL)
 
 # read and parse data file if present - otherwise use default values
 try:
@@ -138,9 +136,6 @@ else:
 	
 	nwt.putNumber('target/lower_vib', target_lower_vib)
 	nwt.putNumber('target/upper_vib', target_upper_vib)
-
-# push blank color settings to network tables
-nwt.putNumberArray('LED', [0, 0, 0])
 
 # reslution to resize input to
 # low resolution used to speed up processing
@@ -312,21 +307,10 @@ cam.set(cv2.CAP_PROP_SATURATION, 0.20)
 cam.set(cv2.CAP_PROP_CONTRAST, 0.1)
 cam.set(cv2.CAP_PROP_GAIN, 0.15)
 
-color = [0, 0, 0]
-
 # main thread
 def main():
 	while True:
-		# gets LED color and camera brightnessfrom network tables
-		# and gets image from camera
-		if nwt.getNumber('RobotMode', 0) != 2:
-			color = nwt.getNumberArray('LED', (0, 0, 0))
-		else:
-			color = LEDcolor
-		if args["led"]:
-			color = LEDcolor
-		if not args["environment"]:
-			LED.setColor(color)
+		# gets image from camera
 		if args["gui"]:
 			bright = cv2.getTrackbarPos('Brightness', 'Control')
 		else:
