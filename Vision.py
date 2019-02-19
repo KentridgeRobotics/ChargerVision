@@ -131,12 +131,13 @@ def findTargetContours(image, hsv):
 	# creates arrays of low and upper bounds of hsv values to test for
 	target_lower_limit = np.array([target_lower_hue, target_lower_sat, target_lower_vib])
 	target_upper_limit = np.array([target_upper_hue, target_upper_sat, target_upper_vib])
-	
+
 	mask = cv2.inRange(hsv, target_lower_limit, target_upper_limit)
+	blur = cv2.GaussianBlur(mask, (5, 5), 0)
 	if args["gui"]:
-		res = cv2.bitwise_and(image,image,mask=mask)
+		res = cv2.bitwise_and(image,image,mask=blur)
 	
-	cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+	cnts = cv2.findContours(blur, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 	cnts = imutils.grab_contours(cnts)
 	
 	height, width = image.shape[:2]
@@ -147,8 +148,8 @@ def findTargetContours(image, hsv):
 	
 	for c in cnts:
 		peri = cv2.arcLength(c, True)
-		approx = cv2.approxPolyDP(c, 0.03 * peri, True)
-		if 3 <= len(approx) <= 5:
+		approx = cv2.approxPolyDP(c, 0.05 * peri, True)
+		if 3 <= len(approx) <= 6:
 			c = c.astype("int")
 			rect = cv2.minAreaRect(c)
 			sorted_rects.append(rect)
@@ -239,7 +240,8 @@ if args["image"] is None:
 	cam.set(cv2.CAP_PROP_AUTOFOCUS, 0)
 	cam.set(cv2.CAP_PROP_SATURATION, 0.20)
 	cam.set(cv2.CAP_PROP_CONTRAST, 0.1)
-	cam.set(cv2.CAP_PROP_GAIN, 0.15)
+	cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
+	cam.set(cv2.CAP_PROP_EXPOSURE, 0)
 
 # main thread
 def main():
