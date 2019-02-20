@@ -7,6 +7,7 @@ import sys
 import atexit
 import math
 import argparse
+import socket
 
 import pprint
 import netifaces as ni
@@ -37,6 +38,12 @@ yres = 128
 
 # horizontal fov of camera for calculating angle
 horizontal_fov = 64.4
+
+# roborio socket
+rio_ip = "10.37.86.2"
+rio_port = 3000
+
+rio_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 # initialize NetworkTables
 NetworkTables.initialize(server=args["serverip"])
@@ -137,7 +144,7 @@ def findTargetContours(image, hsv):
 	if args["gui"]:
 		res = cv2.bitwise_and(image,image,mask=blur)
 	
-	cnts = cv2.findContours(blur, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+	cnts = cv2.findContours(blur, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 	cnts = imutils.grab_contours(cnts)
 	
 	height, width = image.shape[:2]
@@ -148,13 +155,12 @@ def findTargetContours(image, hsv):
 	
 	for c in cnts:
 		peri = cv2.arcLength(c, True)
-		approx = cv2.approxPolyDP(c, 0.05 * peri, True)
-		if 3 <= len(approx) <= 6:
-			c = c.astype("int")
-			rect = cv2.minAreaRect(c)
-			sorted_rects.append(rect)
-			if args["gui"]:
-				cv2.drawContours(contours, [c], -1, (0, 255, 0), 1)
+		approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+		approx = approx.astype("int")
+		rect = cv2.minAreaRect(approx)
+		sorted_rects.append(rect)
+		if args["gui"]:
+			cv2.drawContours(contours, [approx], -1, (0, 255, 0), 1)
 	
 	sorted_rects = sorted(sorted_rects, key=lambda cnt: cnt[0][0])
 	
@@ -189,11 +195,14 @@ def findTargetContours(image, hsv):
 		angles.append(angle)
 	
 	if args["gui"]:
-		cv2.imshow('hsv',hsv)
 		cv2.imshow('image',image)
 		cv2.imshow('mask',res)
 		cv2.imshow('contours',contours)
 		cv2.waitKey(1)
+	
+	send_msg = ', '.join(str(round(e, 3)) for e in angles)
+	send_msg = send_msg[:1024]
+	rio_sock.sendto(send_msg.encode(), (rio_ip, rio_port))
 	pass
 
 # capture frames from the camera, converts to hsv
@@ -242,6 +251,7 @@ if args["image"] is None:
 	cam.set(cv2.CAP_PROP_CONTRAST, 0.1)
 	cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
 	cam.set(cv2.CAP_PROP_EXPOSURE, 0)
+	cam.set(cv2.CAP_PROP_BRIGHTNESS, 0)
 
 # main thread
 def main():
