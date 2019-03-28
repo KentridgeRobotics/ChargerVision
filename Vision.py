@@ -186,6 +186,7 @@ def findTargetContours(image, hsv):
 				left = False
 				
 	angles = []
+	targetCenters = []
 	
 	center = width / 2
 	
@@ -193,6 +194,7 @@ def findTargetContours(image, hsv):
 		x_dist = pnt[0] - center
 		angle = x_dist * angle_per_pixel
 		angles.append(angle)
+		targetCenters.append(x_dist)
 	
 	if args["gui"]:
 		cv2.imshow('image',image)
@@ -200,7 +202,7 @@ def findTargetContours(image, hsv):
 		cv2.imshow('contours',contours)
 		cv2.waitKey(1)
 	
-	send_msg = ', '.join(str(round(e, 3)) for e in angles)
+	send_msg = ', '.join("{0}_{1}".format(str(round(e, 3)),str(c)) for e,c in zip(angles,targetCenters))
 	send_msg = send_msg[:1024]
 	rio_sock.sendto(send_msg.encode(), (rio_ip, rio_port))
 	pass
