@@ -24,6 +24,7 @@ ap.add_argument("-i", "--serverip", type=str, default="10.37.86.2", help="Networ
 ap.add_argument("-a", "--table", type=str, default="SmartDashboard", help="NetworkTables Table")
 ap.add_argument("-g", "--gui", action='store_true', help="Enables X GUI")
 ap.add_argument("-e", "--environment", action='store_true', help="Disables features for a non-Pi environment")
+ap.add_argument("-f", "--fps", action='store_true', help="Outputs FPS to console")
 ap.add_argument("--image", help="Specify image file path")
 args = vars(ap.parse_args())
 
@@ -33,8 +34,11 @@ def nothing(x):
 
 # reslution to resize input to
 # low resolution used to speed up processing
-xres = 160
-yres = 128
+xres = 320
+yres = 256
+
+# blur radius (odd number)
+blur_const = 3
 
 # horizontal fov of camera for calculating angle
 horizontal_fov = 64.4
@@ -52,7 +56,7 @@ nwt = NetworkTables.getTable(args["table"])
 # push ip to NetworkTables
 if not args["environment"]:
 	ip = ni.ifaddresses('eth0')[ni.AF_INET][0]['addr']
-	nwt.putString("rpi_ip", ip)
+	nwt.putString("rpi.ip", ip)
 
 # Control Window
 if args["gui"]:
@@ -113,6 +117,41 @@ else:
 
 angle_per_pixel = horizontal_fov / xres
 
+def translateRotation(rotation, width, height):
+	if width < height:
+		rotation = -1 * (rotation - 90)
+	if rotation > 90:
+		rotation = -1 * (rotation - 180)
+	rotation *= -1
+	return round(rotation, 3)
+
+def getRotation(cnt):
+	if len(cnt) >= 5:
+		ellipse = cv2.fitEllipse(cnt)
+		center = ellipse[0]
+		ellipseRotation = ellipse[2]
+		ellipseWidth = ellipse[1][0]
+		ellipseHeight = ellipse[1][1]
+		rotation = translateRotation(ellipseRotation, ellipseWidth, ellipseHeight)
+		return rotation, center
+	else:
+		rect = cv2.minAreaRect(cnt)
+		center = rect[0]
+		boxRotation = rect[2]
+		boxWidth = rect[1][0]
+		boxHeight = rect[1][1]
+		rotation = translateRotation(boxRotation, boxWidth, boxHeight)
+		return rotation, center
+
+xcenter = xres / 2
+	
+def calculateTarget(cx1, cx2, cy1, cy2):
+	center = [np.round((cx1 + cx2) * 0.5).astype("int"), np.round((cy1 + cy2) * 0.5).astype("int")]
+	x_dist = center[0] - xcenter
+	x_ratio = round(x_dist / xcenter, 3)
+	angle = math.degrees(math.atan((center[0] - xcenter) / horizontal_fov))
+	return angle, center, x_ratio
+
 # finds vision targets in provided hsv image
 def findTargetContours(image, hsv):
 	# get settings from network tables or trackbars
@@ -134,67 +173,72 @@ def findTargetContours(image, hsv):
 
 		target_lower_vib = nwt.getNumber('target/lower_vib', 0)
 		target_upper_vib = nwt.getNumber('target/upper_vib', 255)
-
+	
 	# creates arrays of low and upper bounds of hsv values to test for
 	target_lower_limit = np.array([target_lower_hue, target_lower_sat, target_lower_vib])
 	target_upper_limit = np.array([target_upper_hue, target_upper_sat, target_upper_vib])
 
 	mask = cv2.inRange(hsv, target_lower_limit, target_upper_limit)
-	blur = cv2.GaussianBlur(mask, (5, 5), 0)
+	#blur = cv2.blur(mask, (blur_const, blur_const))
+	blur = cv2.GaussianBlur(mask, (blur_const, blur_const), 0)
+	
 	if args["gui"]:
+		height, width = image.shape[:2]
 		res = cv2.bitwise_and(image,image,mask=blur)
-	
-	cnts = cv2.findContours(blur, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-	cnts = imutils.grab_contours(cnts)
-	
-	height, width = image.shape[:2]
-	if args["gui"]:
 		contours = np.zeros((height, width, 3), np.uint8)
+		cv2.circle(res, (int(round(width / 2)), int(round(height / 2))), 3, (0, 0, 255), 1)
 	
-	sorted_rects = []
+	_, cnts, _ = cv2.findContours(blur, cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)
+		
+	targets = []
 	
-	for c in cnts:
-		peri = cv2.arcLength(c, True)
-		approx = cv2.approxPolyDP(c, 0.02 * peri, True)
-		approx = approx.astype("int")
-		rect = cv2.minAreaRect(approx)
-		sorted_rects.append(rect)
-		if args["gui"]:
-			cv2.drawContours(contours, [approx], -1, (0, 255, 0), 1)
-	
-	sorted_rects = sorted(sorted_rects, key=lambda cnt: cnt[0][0])
-	
-	center_pnts = []
-	
-	left = False
-	
-	if args["gui"]:
-		cv2.circle(res, (np.round(width / 2).astype("int"), np.round(height / 2).astype("int")), 3, (0, 0, 255), 1)
-	
-	for rect in sorted_rects:
-		angle = rect[2]
-		if angle < -45:
-			left = True
-			leftMid = rect[0]
-		elif angle >= -45:
-			if left:
-				rightMid = rect[0]
-				mid = (np.round((leftMid[0] + rightMid[0]) * 0.5).astype("int"), np.round((leftMid[1] + rightMid[1]) * 0.5).astype("int"))
-				center_pnts.append(mid)
+	if len(cnts) >= 2:
+		sorted_cnts = sorted(cnts, key=lambda cnt: cv2.contourArea(cnt), reverse=True)
+		
+		bigCnts = []
+		for c in sorted_cnts:
+			if len(bigCnts) <= 16:
+				area = cv2.contourArea(c)
+				if area > (xres / 6):
+					#peri = cv2.arcLength(c, True)
+					#approx = cv2.approxPolyDP(c, 0.01 * peri, True)
+					#approx = approx.astype("int")
+					rotation, center = getRotation(c)
+					if [center[0], center[1], rotation] not in bigCnts:
+						bigCnts.append([center[0], center[1], rotation])
+						if args["gui"]:
+							cv2.drawContours(contours, [c], -1, (0, 255, 0), 1)
+					
+		bigCnts = sorted(bigCnts, key=lambda cnt: cnt[0])
+		
+		skipNext = False
+		for i in range(len(bigCnts) - 1):
+			if skipNext:
+				skipNext = False
+				continue
+			cx1 = bigCnts[i][0]
+			cx2 = bigCnts[i + 1][0]
+			cy1 = bigCnts[i][1]
+			cy2 = bigCnts[i + 1][1]
+			angle1 = bigCnts[i][2]
+			angle2 = bigCnts[i + 1][2]
+			
+			if (cx2 - cx1) < (xres / 40):
+				continue
+			elif abs(cy2 - cy1) > (yres / 2):
+				continue
+			
+			if angle1 > 0:
+				continue
+			if angle2 < 0:
+				continue
+			
+			angle, center, xdist = calculateTarget(cx1, cx2, cy1, cy2)
+			if [angle, center, xdist] not in targets:
+				targets.append([angle, center, xdist])
+				skipNext = True
 				if args["gui"]:
-					cv2.circle(res, mid, 3, (255, 0, 0), 1)
-				left = False
-				
-	angles = []
-	targetCenters = []
-	
-	center = width / 2
-	
-	for pnt in center_pnts:
-		x_dist = pnt[0] - center
-		angle = x_dist * angle_per_pixel
-		angles.append(angle)
-		targetCenters.append(x_dist)
+					cv2.circle(res, (center[0], center[1]), 3, (255, 0, 0), 1)
 	
 	if args["gui"]:
 		cv2.imshow('image',image)
@@ -202,11 +246,11 @@ def findTargetContours(image, hsv):
 		cv2.imshow('contours',contours)
 		cv2.waitKey(1)
 	
-	send_msg = ', '.join("{0}_{1}".format(str(round(e, 3)),str(c)) for e,c in zip(angles,targetCenters))
+	send_msg = ','.join("{0}_{1}".format(str(round(angle, 3)),str(xdist)) for angle,_,xdist in targets)
 	send_msg = send_msg[:1024]
 	rio_sock.sendto(send_msg.encode(), (rio_ip, rio_port))
 	pass
-
+	
 # capture frames from the camera, converts to hsv
 # and pushes to processing functions
 def frameUpdate(image):
@@ -229,7 +273,7 @@ def exithandler():
 		target_upper_vib = cv2.getTrackbarPos('Target_Upper_Vib', 'Control')
 		
 		cv2.destroyAllWindows()
-	else:
+	elif not args["environment"]:
 		bright = nwt.getNumber('brightness', 15.0)
 		
 		target_lower_hue = nwt.getNumber('target/lower_hue', 0)
@@ -255,8 +299,21 @@ if args["image"] is None:
 	cam.set(cv2.CAP_PROP_EXPOSURE, 0)
 	cam.set(cv2.CAP_PROP_BRIGHTNESS, 0)
 
+fps_shift_reg = deque([], 16)
+
+def getFPS():
+	if len(fps_shift_reg) is 0:
+		fps = -1
+	else:
+		fps = sum(fps_shift_reg) / len(fps_shift_reg)
+	return fps
+
 # main thread
 def main():
+	if args["fps"]:
+		start_time = time.time()
+		fps_poll_time = 0.25
+		frame_counter = 0
 	while True:
 		# gets image from camera
 		if args["gui"]:
@@ -274,6 +331,19 @@ def main():
 			image = imutils.resize(image, width=xres, height=yres)
 			if args["image"] is None:
 				cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)
+			if args["fps"]:
+				frame_counter += 1
+				current_time = time.time()
+				if (current_time - start_time) > fps_poll_time:
+					fps = frame_counter / (current_time - start_time)
+					fps_shift_reg.append(fps)
+					frame_counter = 0
+					start_time = current_time
+				fps = round(getFPS(), 3)
+				if not args["environment"]:
+					nwt.putNumber("rpi.vision_fps", fps)
+				else:
+					print("FPS: " + str(fps))
 			frameUpdate(image)
 
 # starts main thread
