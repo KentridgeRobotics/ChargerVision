@@ -23,4 +23,5 @@ Argument | Usage
 -a | NetworkTables Table
 -g | Output to X
 -e | Disables unnecessary RaspberryPi code for testing vision on other devices
+-f | Outputs the FPS to the console
 --image | Specifies test image for experimentation without a camera

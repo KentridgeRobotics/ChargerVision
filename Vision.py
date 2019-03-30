@@ -310,10 +310,9 @@ def getFPS():
 
 # main thread
 def main():
-	if args["fps"]:
-		start_time = time.time()
-		fps_poll_time = 0.25
-		frame_counter = 0
+	start_time = time.time()
+	fps_poll_time = 0.25
+	frame_counter = 0
 	while True:
 		# gets image from camera
 		if args["gui"]:
@@ -331,19 +330,18 @@ def main():
 			image = imutils.resize(image, width=xres, height=yres)
 			if args["image"] is None:
 				cam.set(cv2.CAP_PROP_BRIGHTNESS, bright / 100.0)
+			frame_counter += 1
+			current_time = time.time()
+			if (current_time - start_time) > fps_poll_time:
+				fps = frame_counter / (current_time - start_time)
+				fps_shift_reg.append(fps)
+				frame_counter = 0
+				start_time = current_time
+			fps = round(getFPS(), 3)
+			if not args["environment"]:
+				nwt.putNumber("rpi.vision_fps", fps)
 			if args["fps"]:
-				frame_counter += 1
-				current_time = time.time()
-				if (current_time - start_time) > fps_poll_time:
-					fps = frame_counter / (current_time - start_time)
-					fps_shift_reg.append(fps)
-					frame_counter = 0
-					start_time = current_time
-				fps = round(getFPS(), 3)
-				if not args["environment"]:
-					nwt.putNumber("rpi.vision_fps", fps)
-				else:
-					print("FPS: " + str(fps))
+				print("FPS: " + str(fps))
 			frameUpdate(image)
 
 # starts main thread
